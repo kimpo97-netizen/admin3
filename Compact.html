@@ -1,748 +1,452 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Calendar, Clock, ArrowRight, Smartphone, User, FileText, Package, Zap, SlidersHorizontal, X, Save, Plus, Trash2, Building, AlertCircle, RefreshCw, CheckCircle, Loader2, StickyNote } from 'lucide-react';
-
-// 여기에 배포한 구글 앱스 스크립트 URL을 입력하세요.
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzYaaFMrSE495T4nI97MmW6r43svqTzxhPpbiEqudOIC0FLSoQ2tD1QZ9X6KM46fVe_Gw/exec"; 
-
-// --- 헬퍼 함수 (컴포넌트 외부 정의) ---
-
-// 날짜 문자열(YY.MM.DD)을 Date 객체로 변환하는 헬퍼 함수
-const parseDateStr = (dateStr) => {
-  if (!dateStr) return new Date(0);
-  const str = String(dateStr);
-  // ISO string
-  if (str.includes('-') || str.includes('T')) {
-      return new Date(str);
-  }
-  // YY.MM.DD
-  const parts = str.split('.');
-  if (parts.length === 3) {
-      const [yy, mm, dd] = parts.map(Number);
-      return new Date(2000 + yy, mm - 1, dd);
-  }
-  return new Date(str); // Fallback
-};
-
-// 기준 날짜 계산 (D-2) - 컴포넌트 외부로 이동
-const getThresholdDate = () => {
-  const date = new Date();
-  date.setDate(date.getDate() - 2); // 2일 전
-  date.setHours(0, 0, 0, 0); // 시간 초기화
-  return date;
-};
-
-// 모델명 축약 및 정규화 (S 제외 유지)
-const getShortModelName = (fullModelName) => {
-  if (!fullModelName) return "";
-  let name = fullModelName.toUpperCase()
-    .replace('GALAXY', '')
-    .replace('갤럭시', '')
-    .replace('IPHONE', '')
-    .replace('아이폰', '')
-    .trim();
-
-  name = name.replace('ULTRA', 'U').replace('울트라', 'U');
-  name = name.replace('PRO', 'P').replace('프로', 'P');
-  name = name.replace('MAX', 'M').replace('맥스', 'M');
-  name = name.replace('PLUS', '+').replace('플러스', '+');
-  
-  // 공백 제거
-  name = name.replace(/\s/g, '');
-
-  // S로 시작하고 바로 뒤에 숫자가 오는 경우 (예: S23U -> 23U) S 제거
-  if (name.startsWith('S') && /^\d/.test(name.slice(1))) {
-    name = name.substring(1);
-  }
-
-  return name;
-};
-
-// 모델 필터 매칭 로직 (S 없는 키워드 기준)
-const isModelMatch = (orderModel, filterKey) => {
-  const shortName = getShortModelName(orderModel); // 결과 예: 23U, 24U, 17PM
-
-  if (filterKey === '전체') return true;
-
-  // 갤럭시 시리즈 (23U, 24U, 25U)
-  if (['23U', '24U', '25U'].includes(filterKey)) {
-    return shortName.startsWith(filterKey.replace('U', '')); 
-  }
-  
-  // 아이폰 17 시리즈 구분 (17P vs 17PM)
-  if (filterKey === '17P') {
-    return shortName === '17P' || (shortName.includes('17P') && !shortName.includes('M'));
-  }
-  if (filterKey === '17PM') {
-    return shortName === '17PM' || shortName.includes('17PM');
-  }
-  
-  return shortName.includes(filterKey);
-};
-
-// 전화번호 포맷팅
-const formatPhoneNumber = (value) => {
-  const numbers = value.replace(/[^\d]/g, '');
-  if (numbers.length <= 3) return numbers;
-  if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
-};
-
-// 날짜 포맷팅 (YYYY.MM.DD -> YY.MM.DD)
-const safeFormatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const str = String(dateStr).trim();
-  if (/^\d{2}\.\d{2}\.\d{2}$/.test(str)) return str;
-  if (/^\d{4}\.\d{2}\.\d{2}$/.test(str)) return str.slice(2);
-  try {
-    const d = new Date(str);
-    if (isNaN(d.getTime())) return str;
-    const year = d.getFullYear().toString().slice(-2);
-    const month = ('0' + (d.getMonth() + 1)).slice(-2);
-    const day = ('0' + d.getDate()).slice(-2);
-    return `${year}.${month}.${day}`;
-  } catch (e) {
-    return str;
-  }
-};
-
-// 상태별 컬러 라인 스타일
-const getStatusColor = (status) => {
-  switch (status) {
-    case '예약확정': return 'bg-blue-500';
-    case '대여중': return 'bg-green-500';
-    case '반납완료': return 'bg-gray-300';
-    case '연체중': return 'bg-red-500';
-    case '취소': return 'bg-orange-400';
-    default: return 'bg-gray-300';
-  }
-};
-
-// 상태별 배지 스타일
-const getStatusBadgeStyle = (status) => {
-  switch (status) {
-    case '예약확정': return 'bg-blue-50 text-blue-600 border-blue-100';
-    case '대여중': return 'bg-green-50 text-green-600 border-green-100';
-    case '반납완료': return 'bg-gray-50 text-gray-500 border-gray-100';
-    case '연체중': return 'bg-red-50 text-red-600 border-red-100';
-    case '취소': return 'bg-orange-50 text-orange-600 border-orange-100';
-    default: return 'bg-gray-50 text-gray-500 border-gray-100';
-  }
-};
-
-// 탭 아이콘 렌더링 (이전 버전 아이콘으로 복구)
-const renderTabIcon = (label) => {
-  if (label === '택배') return <Package className="w-3 h-3" />;
-  if (label === '공연장') return <MapPin className="w-3 h-3" />;
-  if (label === '퀵') return <Zap className="w-3 h-3" />;
-  if (label === '사무실') return <Building className="w-3 h-3" />;
-  return null;
-};
-
-// --- 컴포넌트 시작 ---
-const RentalAdminCompact = () => {
-  const [dateFilters, setDateFilters] = useState([]);
-  const [modelFilter, setModelFilter] = useState('전체');
-  const [methodFilter, setMethodFilter] = useState('전체');
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [deviceInput, setDeviceInput] = useState('');
-  const [isOfflineMode, setIsOfflineMode] = useState(false);
-
-  // 초기 샘플 데이터
-  const initialData = [
-    { id: 1, time: '14:30', model: 'Galaxy S23 Ultra', qty: 1, user: '김민지', phone: '010-1234-5678', start: '25.12.25', event: '세븐틴 고척 콘서트', pickup: '택배', return: '택배', status: '예약확정', assigned: [], memo: '입금 확인 필요' },
-    { id: 2, time: '13:15', model: 'iPhone 17 Pro Max', qty: 2, user: '이서연', phone: '010-9876-5432', start: '25.12.26', event: 'NCT 127 팬미팅', pickup: '공연장', return: '공연장', status: '대여중', assigned: ['17PM02', '17PM05'], memo: '단골 고객' },
-    { id: 5, time: '10:00', model: 'iPhone 17 Pro', qty: 1, user: '정하나', phone: '010-1111-2222', start: '25.12.25', event: '세븐틴 고척 막콘', pickup: '공연장', return: '공연장', status: '연체중', assigned: ['17P09'], memo: '' },
-    { id: 3, time: '09:00', model: '23u', qty: 1, user: '박지민', phone: '010-4444-5555', start: '25.12.28', event: '개인 촬영', pickup: '택배', return: '택배', status: '반납완료', assigned: ['23U18'], memo: '' },
-    { id: 4, time: '11:20', model: 'Galaxy S24 Ultra', qty: 1, user: '최수영', phone: '010-9999-0000', start: '25.12.29', event: '아이브 콘서트', pickup: '퀵', return: '택배', status: '예약확정', assigned: [], memo: '' },
-    { id: 6, time: '15:45', model: 'Galaxy S25 Ultra', qty: 2, user: '강다니엘', phone: '010-2222-3333', start: '26.01.05', event: '골든디스크', pickup: '택배', return: '택배', status: '예약확정', assigned: [], memo: '' },
-    { id: 8, time: '14:30', model: 'Galaxy S23 Ultra', qty: 1, user: '김민지', phone: '010-1234-1234', start: '25.12.25', event: '친구랑 대여', pickup: '사무실', return: '사무실', status: '예약확정', assigned: [], memo: '신분증 지참 안내함' },
-    { id: 9, time: '16:00', model: 'iPhone 17 Pro', qty: 1, user: '장원영', phone: '010-3333-4444', start: '25.12.25', event: '크리스마스 파티', pickup: '퀵', return: '퀵', status: '예약확정', assigned: [], memo: '' },
-  ];
-
-  const [orders, setOrders] = useState(initialData);
-
-  const isDuplicateName = (currentOrder) => {
-    return orders.filter(o => 
-      o.start === currentOrder.start && 
-      o.user.replace(/\s/g, '') === currentOrder.user.replace(/\s/g, '') 
-    ).length > 1;
-  };
-
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    setIsOfflineMode(false);
-
-    try {
-      if (!GOOGLE_SHEET_URL) throw new Error("URL 없음");
-
-      const response = await fetch(GOOGLE_SHEET_URL);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setOrders(data.map(item => ({
-          ...item,
-          assigned: item.assigned || [], // F열
-          qty: parseInt(item.qty) || 1,
-          memo: item.memo || '', // P열
-          start: safeFormatDate(item.start) 
-        })));
-      } else {
-        throw new Error("데이터 형식 오류");
-      }
-
-    } catch (error) {
-      console.warn("시트 연동 실패 (로컬 데이터 사용):", error);
-      setIsOfflineMode(true);
-      if(orders.length === 0) setOrders(initialData);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const handleSaveChanges = async () => {
-    setOrders(prev => prev.map(o => o.id === selectedOrder.id ? selectedOrder : o));
-    setIsModalOpen(false);
-
-    if (GOOGLE_SHEET_URL && !isOfflineMode) {
-      try {
-        await fetch(GOOGLE_SHEET_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "update", ...selectedOrder }),
-        });
-      } catch (error) {
-        console.error("Save Error:", error);
-      }
-    }
-  };
-
-  const handleQuickReturn = async (e, orderId) => {
-    e.stopPropagation();
-    const targetOrder = orders.find(o => o.id === orderId);
-    if (!targetOrder) return;
-
-    const updatedOrder = { ...targetOrder, status: '반납완료' };
-    setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>폰 렌탈 서비스 관리자</title>
+    <!-- Tailwind CSS 불러오기 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM 불러오기 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel (JSX 변환용) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    if (GOOGLE_SHEET_URL && !isOfflineMode) {
-      try {
-        await fetch(GOOGLE_SHEET_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "update", ...updatedOrder }),
-        });
-      } catch (error) {
-        console.error("Quick Return Error:", error);
-      }
-    }
-  };
-
-  const handleOrderClick = (order) => {
-    setSelectedOrder({ ...order });
-    setDeviceInput('');
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedOrder(null);
-  };
-
-  const handleInputChange = (field, value) => {
-    if (field === 'phone') {
-      value = formatPhoneNumber(value);
-    }
-    setSelectedOrder(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddDevice = () => {
-    if (!deviceInput.trim()) return;
-    const shortModel = getShortModelName(selectedOrder.model);
-    const newDeviceTag = `${shortModel}${deviceInput}`; 
-    
-    setSelectedOrder(prev => ({
-      ...prev,
-      assigned: [...(prev.assigned || []), newDeviceTag]
-    }));
-    setDeviceInput('');
-  };
-
-  const handleRemoveDevice = (index) => {
-    setSelectedOrder(prev => ({
-      ...prev,
-      assigned: prev.assigned.filter((_, i) => i !== index)
-    }));
-  };
-
-  // 필터링 및 검색 로직
-  const getFilteredOrders = () => {
-    let filtered = orders;
-
-    // [추가] 기본 날짜 필터: D-2 이전 날짜는 리스트에서 숨김
-    const thresholdDate = getThresholdDate();
-    filtered = filtered.filter(order => {
-        const orderDate = parseDateStr(order.start);
-        return orderDate >= thresholdDate;
-    });
-
-    if (searchTerm) {
-      const term = searchTerm.trim().toLowerCase();
-      filtered = filtered.filter(order => {
-        const isNameMatch = order.user.toLowerCase().includes(term);
-        const cleanPhone = order.phone.replace(/-/g, '');
-        const lastFour = cleanPhone.slice(-4);
-        const isPhoneMatch = term.length >= 4 && (cleanPhone === term || lastFour === term || order.phone === term);
-        const isDeviceMatch = order.assigned && order.assigned.some(tag => {
-            const match = tag.match(/(\d+)$/);
-            const deviceNum = match ? match[1] : '';
-            return deviceNum === term; 
-        });
-        const shortModel = getShortModelName(order.model).toLowerCase();
-        const isModelMatch = shortModel.includes(term) || order.model.toLowerCase().includes(term);
-
-        return isNameMatch || isPhoneMatch || isDeviceMatch || isModelMatch;
-      });
-    }
-
-    if (dateFilters.length > 0) {
-      filtered = filtered.filter(order => dateFilters.includes(order.start));
-    }
-
-    if (modelFilter !== '전체') {
-       filtered = filtered.filter(o => isModelMatch(o.model, modelFilter));
-    }
-
-    if (methodFilter !== '전체') {
-      filtered = filtered.filter(order => order.pickup === methodFilter);
-    }
-
-    return filtered.sort((a, b) => a.start.localeCompare(b.start));
-  };
-
-  const filteredOrders = getFilteredOrders();
-
-  const toggleDateFilter = (dateLabel) => {
-    if (dateLabel === '전체') { setDateFilters([]); return; }
-    setDateFilters(prev => prev.includes(dateLabel) ? prev.filter(d => d !== dateLabel) : [...prev, dateLabel]);
-  };
-
-  const getOrdersForDate = () => {
-      if(dateFilters.length === 0) return orders;
-      return orders.filter(o => dateFilters.includes(o.start));
-  };
-  const currentFilteredByDate = getOrdersForDate();
-
-  const countByModel = (keyword) => {
-    if (keyword === '전체') return currentFilteredByDate.length;
-    return currentFilteredByDate.filter(o => isModelMatch(o.model, keyword)).length;
-  };
-
-  const countByMethod = (keyword) => {
-      let base = currentFilteredByDate;
-      if (modelFilter !== '전체') {
-          base = base.filter(o => isModelMatch(o.model, modelFilter));
-      }
-      return base.filter(o => o.pickup === keyword).length;
-  };
-
-  // 날짜 목록 생성 (D-2 필터 적용)
-  const thresholdDate = getThresholdDate();
-  
-  const uniqueDates = [...new Set(orders.map(o => o.start))]
-    .filter(dateStr => {
-      const date = parseDateStr(dateStr);
-      return date >= thresholdDate;
-    })
-    .sort();
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans select-none">
-      
-      {/* 상단 헤더 */}
-      <div className="sticky top-0 z-20 bg-white shadow-sm pb-1">
-        <div className="px-4 pt-4 pb-2">
-          <div className="flex justify-between items-center mb-3">
-            <h1 className="text-xl font-bold text-gray-900">예약 관리</h1>
-            <div className="flex gap-2 items-center">
-               {isLoading && <span className="text-xs text-gray-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 동기화 중...</span>}
-               {isOfflineMode && !isLoading && <span className="text-xs text-orange-500 font-bold flex items-center gap-1">⚠ 오프라인</span>}
-               <div className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
-                 Total {orders.length}
-               </div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-                <input 
-                  type="text" 
-                  placeholder="고객명(일부), 연락처(뒷자리), 기기번호 검색" 
-                  className="w-full bg-gray-100 text-sm py-2.5 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-            </div>
-            <button 
-                onClick={fetchOrders}
-                className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-gray-900 transition-colors active:scale-95 flex-shrink-0"
-                aria-label="새로고침"
-            >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
-
-        {/* 1. 날짜 필터 */}
-        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide">
-          <button
-            onClick={() => toggleDateFilter('전체')}
-            className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border min-w-[50px]
-              ${dateFilters.length === 0 ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}
-          >
-            전체 <span className={`text-[8px] px-1 py-0.5 rounded-full ${dateFilters.length === 0 ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{orders.length}</span>
-          </button>
-          {uniqueDates.map(date => {
-            const isActive = dateFilters.includes(date);
-            return (
-              <button
-                key={date}
-                onClick={() => toggleDateFilter(date)}
-                className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border min-w-[50px]
-                  ${isActive ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}
-              >
-                {date} 
-                <span className={`text-[8px] px-1 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                  {orders.filter(o => o.start === date).length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 2. 모델 필터 */}
-        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide mt-1">
-          <div className="flex items-center mr-1 text-gray-400"><Smartphone className="w-3.5 h-3.5" /></div>
-          {['전체', '23U', '24U', '25U', '17P', '17PM'].map(tab => {
-             // 탭 키워드는 필터링용으로 단순화
-             const keyword = tab; 
-             const count = countByModel(keyword);
-             return (
-              <button
-                key={tab}
-                onClick={() => setModelFilter(keyword)}
-                className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border min-w-[50px]
-                  ${modelFilter === keyword ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-100'}
-                  ${count === 0 ? 'opacity-40' : ''}`}
-              >
-                {tab}
-                {tab !== '전체' && <span className={`text-[9px] px-1 py-0.5 rounded-full ${modelFilter === keyword ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{count}</span>}
-              </button>
-             );
-          })}
-        </div>
-
-        {/* 3. 수령방법 필터 (아이콘 복구됨) */}
-        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide mt-1">
-            <div className="flex items-center mr-1 text-gray-400"><SlidersHorizontal className="w-3.5 h-3.5" /></div>
-            {['전체', '공연장', '택배', '퀵', '사무실'].map(label => {
-               const count = label === '전체' ? currentFilteredByDate.length : countByMethod(label);
-               return (
-                <button
-                    key={label}
-                    onClick={() => setMethodFilter(label)}
-                    className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border min-w-[55px]
-                    ${methodFilter === label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-100'}
-                    ${count === 0 ? 'opacity-40' : ''}`}
-                >
-                    {renderTabIcon(label)}
-                    {label}
-                    {label !== '전체' && <span className={`text-[9px] px-1 py-0.5 rounded-full ${methodFilter === label ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{count}</span>}
-                </button>
-               );
-            })}
-        </div>
-      </div>
-
-      {/* 리스트 영역 */}
-      <div className="flex-1 px-3 py-2 space-y-2 overflow-y-auto pb-20 bg-gray-50">
-        {filteredOrders.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-            {searchTerm ? (
-                <div className="text-center">
-                  <Search className="w-8 h-8 mb-2 opacity-30 mx-auto" />
-                  <p className="text-sm font-medium text-gray-600">검색 결과가 없습니다.</p>
-                </div>
-            ) : (
-                <div className="text-center">
-                  <Smartphone className="w-8 h-8 mb-2 opacity-50 mx-auto" />
-                  <p className="text-sm">조건에 맞는 예약이 없습니다.</p>
-                </div>
-            )}
-          </div>
-        ) : (
-          filteredOrders.map((order, index) => {
-            const isDup = isDuplicateName(order);
-            
-            return (
-            <div 
-              // 키 중복 방지 (ID+Index 조합)
-              key={order.id ? `${order.id}-${index}` : index}
-              onClick={() => handleOrderClick(order)} 
-              className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer"
-            >
-              {/* 상태 컬러 라인 */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${getStatusColor(order.status).split(' ')[0]}`} />
-              
-              <div className="pl-4 pr-4 py-3">
-                {/* 1. 상단: 모델 & 기기번호 & 이름 & 메모 & 날짜 */}
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center gap-2 overflow-hidden flex-1 mr-2">
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
-                            {getShortModelName(order.model)}
-                        </span>
-                        {order.assigned && order.assigned.length > 0 && (
-                            <div className="flex gap-1">
-                                {order.assigned.map((tag, i) => {
-                                    const shortModel = getShortModelName(order.model);
-                                    const deviceNum = tag.replace(shortModel, '').replace('-', ''); 
-                                    return (
-                                        <span key={i} className="bg-violet-100 text-violet-600 border border-violet-200 text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap flex items-center">
-                                            {deviceNum}
-                                        </span>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                    
-                    {/* 이름 & 동명이인 체크 (강조 적용됨) */}
-                    <div className="flex items-center gap-1 flex-shrink-0 ml-1 relative">
-                      <span className={`font-bold text-sm whitespace-nowrap ${isDup ? 'text-red-600' : 'text-gray-900'}`}>
-                        {order.user}
-                      </span>
-                      {isDup && (
-                        <div className="group relative">
-                          <AlertCircle className="w-3.5 h-3.5 text-red-600 animate-pulse cursor-help" />
-                          <div className="absolute left-1/2 bottom-full mb-1 transform -translate-x-1/2 hidden group-hover:block bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-50">
-                            동명이인 주의
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* 메모 및 행사명 */}
-                    <div className="flex items-center truncate min-w-0 ml-1 gap-1.5">
-                      <span className="text-xs text-gray-500 truncate">{order.event}</span>
-                      {order.memo && order.memo.trim() !== '' && (
-                        <span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 truncate max-w-[120px] font-medium flex items-center gap-0.5">
-                          {order.memo}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* 날짜 및 상태 표시 */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="flex items-center">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getStatusBadgeStyle(order.status)}`}>
-                          {order.status}
-                      </span>
-                      {/* 빠른 반납 버튼 */}
-                      {(order.status === '대여중' || order.status === '연체중') && (
-                        <button
-                          onClick={(e) => handleQuickReturn(e, order.id)}
-                          className="ml-1 bg-white border border-gray-200 text-gray-400 hover:text-green-600 hover:border-green-400 hover:bg-green-50 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-all shadow-sm"
-                        >
-                          <CheckCircle className="w-3 h-3" />
-                          <span className="leading-none pb-[1px]">반납</span>
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-md">
-                        <Calendar className="w-3 h-3 text-blue-600" />
-                        <span className="text-[10px] font-bold text-blue-700 tracking-tight">
-                        {order.start}
-                        </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. 하단: 수령방법 -> 반납방법 */}
-                <div className="flex items-center gap-2 text-xs bg-gray-50 p-2 rounded-lg border border-gray-100">
-                  <div className="flex items-center gap-1.5 flex-1 justify-center">
-                    <span className="text-gray-500">수령</span>
-                    <strong className="text-blue-600">{order.pickup}</strong>
-                  </div>
-                  <ArrowRight className="w-3 h-3 text-gray-300" />
-                  <div className="flex items-center gap-1.5 flex-1 justify-center">
-                    <span className="text-gray-500">반납</span>
-                    <strong className="text-red-500">{order.return}</strong>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* 상세/수정 모달 */}
-      {isModalOpen && selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full sm:w-[400px] h-[90vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slideUp">
-            
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
-              <h2 className="text-lg font-bold text-gray-900">예약 상세 / 수정</h2>
-              <button onClick={handleCloseModal} className="p-2 -mr-2 text-gray-400 hover:text-gray-600">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              
-              {/* 기기 배정 섹션 */}
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <label className="text-xs font-bold text-blue-800 mb-2 block flex items-center gap-1">
-                   <Smartphone className="w-3.5 h-3.5" /> 기기 배정 (출고 처리)
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <input 
-                    type="number" 
-                    placeholder="기기 번호 (예: 18)" 
-                    className="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={deviceInput}
-                    onChange={(e) => setDeviceInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddDevice()}
-                  />
-                  <button onClick={handleAddDevice} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">추가</button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedOrder.assigned && selectedOrder.assigned.length > 0 ? (
-                    selectedOrder.assigned.map((tag, idx) => {
-                      const shortModel = getShortModelName(selectedOrder.model);
-                      const deviceNum = tag.replace(shortModel, '').replace('-', '');
-                      return (
-                        <div key={idx} className="flex items-center gap-1 bg-white border border-blue-200 text-blue-800 px-2 py-1 rounded text-sm font-medium shadow-sm">
-                          <span>#{deviceNum}</span>
-                          <button onClick={() => handleRemoveDevice(idx)} className="text-blue-400 hover:text-red-500"><X className="w-3 h-3" /></button>
-                        </div>
-                      )
-                    })
-                  ) : <p className="text-xs text-blue-400">배정된 기기가 없습니다.</p>}
-                </div>
-              </div>
-
-              {/* 정보 수정 폼 */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1"><User className="w-4 h-4" /> 고객 정보</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">이름</label>
-                    <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.user} onChange={(e) => handleInputChange('user', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">연락처</label>
-                    <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1"><Calendar className="w-4 h-4" /> 일정 및 모델 정보</h3>
-                <div>
-                   <label className="text-xs text-gray-500 mb-1 block">행사명</label>
-                   <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.event} onChange={(e) => handleInputChange('event', e.target.value)} />
-                </div>
-                {/* 관리자 메모 (P열 연동) */}
-                <div>
-                   <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><StickyNote className="w-3 h-3" /> 관리자 메모 (내부용)</label>
-                   <textarea 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm h-20 resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
-                      value={selectedOrder.memo || ''}
-                      onChange={(e) => handleInputChange('memo', e.target.value)}
-                      placeholder="특이사항, 단골 여부 등 내부 메모를 입력하세요."
-                   />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                   <div>
-                      <label className="text-xs text-gray-500 mb-1 block">대여 모델</label>
-                      <select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.model} onChange={(e) => handleInputChange('model', e.target.value)}>
-                        <option value="Galaxy S23 Ultra">23U (Galaxy S23 Ultra)</option>
-                        <option value="Galaxy S24 Ultra">24U (Galaxy S24 Ultra)</option>
-                        <option value="Galaxy S25 Ultra">25U (Galaxy S25 Ultra)</option>
-                        <option value="iPhone 17 Pro">17P (iPhone 17 Pro)</option>
-                        <option value="iPhone 17 Pro Max">17PM (iPhone 17 Pro Max)</option>
-                      </select>
-                   </div>
-                   <div>
-                      <label className="text-xs text-gray-500 mb-1 block">수량</label>
-                      <input type="number" min="1" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.qty} onChange={(e) => handleInputChange('qty', parseInt(e.target.value) || 1)} />
-                   </div>
-                   <div>
-                      <label className="text-xs text-gray-500 mb-1 block">수령 방법</label>
-                      <select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.pickup} onChange={(e) => handleInputChange('pickup', e.target.value)}>
-                        <option value="공연장">공연장</option>
-                        <option value="택배">택배</option>
-                        <option value="퀵">퀵</option>
-                        <option value="사무실">사무실</option>
-                      </select>
-                   </div>
-                   <div>
-                      <label className="text-xs text-gray-500 mb-1 block">반납 방법</label>
-                      <select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.return} onChange={(e) => handleInputChange('return', e.target.value)}>
-                        <option value="공연장">공연장</option>
-                        <option value="택배">택배</option>
-                        <option value="퀵">퀵</option>
-                        <option value="사무실">사무실</option>
-                      </select>
-                   </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 mb-2">예약 상태</h3>
-                <div className="flex gap-2 flex-wrap">
-                  {['예약확정', '대여중', '반납완료', '취소'].map(status => (
-                    <button key={status} onClick={() => handleInputChange('status', status)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${selectedOrder.status === status ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>{status}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 border-t border-gray-100 bg-gray-50 safe-area-pb">
-              <button onClick={handleSaveChanges} className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
-                <Save className="w-4 h-4" /> 변경사항 저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <button className="fixed bottom-6 right-6 w-12 h-12 bg-gray-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-colors z-30">
-        <span className="text-2xl font-light mb-1">+</span>
-      </button>
-
-      <style>{`
+    <style>
+        /* 스크롤바 숨기기 등 커스텀 스타일 */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* 애니메이션 정의 */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
         .animate-slideUp { animation: slideUp 0.3s ease-out; }
-      `}</style>
-    </div>
-  );
-};
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
 
-export default RentalAdminCompact;
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 아이콘 컴포넌트 (Lucide 아이콘을 SVG로 직접 구현) ---
+        const IconBase = ({ children, className, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+        );
+        const Search = (props) => <IconBase {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase>;
+        const MapPin = (props) => <IconBase {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
+        const Calendar = (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></IconBase>;
+        const Clock = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>;
+        const ArrowRight = (props) => <IconBase {...props}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></IconBase>;
+        const Smartphone = (props) => <IconBase {...props}><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></IconBase>;
+        const User = (props) => <IconBase {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
+        const FileText = (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase>;
+        const Package = (props) => <IconBase {...props}><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22v-9.96"/></IconBase>;
+        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
+        const SlidersHorizontal = (props) => <IconBase {...props}><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></IconBase>;
+        const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></IconBase>;
+        const Save = (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>;
+        const Plus = (props) => <IconBase {...props}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>;
+        const Trash2 = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>;
+        const Building = (props) => <IconBase {...props}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></IconBase>;
+        const AlertCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
+        const RefreshCw = (props) => <IconBase {...props}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconBase>;
+        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+        const Loader2 = (props) => <IconBase {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></IconBase>;
+        const StickyNote = (props) => <IconBase {...props}><path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></IconBase>;
+        const Truck = (props) => <IconBase {...props}><path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"/><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"/><circle cx="7" cy="18" r="2"/><path d="M15 18H9"/><circle cx="17" cy="18" r="2"/></IconBase>;
+        const Ticket = (props) => <IconBase {...props}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></IconBase>;
+        const Bike = (props) => <IconBase {...props}><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></IconBase>;
+        const Store = (props) => <IconBase {...props}><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></IconBase>;
+        const ListFilter = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></IconBase>;
+
+        // --- 앱 설정 ---
+        // 여기에 배포한 구글 앱스 스크립트 URL을 입력하세요.
+        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzYaaFMrSE495T4nI97MmW6r43svqTzxhPpbiEqudOIC0FLSoQ2tD1QZ9X6KM46fVe_Gw/exec"; 
+
+        // --- 헬퍼 함수 ---
+        const parseDateStr = (dateStr) => {
+            if (!dateStr) return new Date(0);
+            const str = String(dateStr);
+            if (str.includes('-') || str.includes('T')) return new Date(str);
+            const parts = str.split('.');
+            if (parts.length === 3) {
+                const [yy, mm, dd] = parts.map(Number);
+                return new Date(2000 + yy, mm - 1, dd);
+            }
+            return new Date(str);
+        };
+
+        const getThresholdDate = () => {
+            const date = new Date();
+            date.setDate(date.getDate() - 2); 
+            date.setHours(0, 0, 0, 0); 
+            return date;
+        };
+
+        const getShortModelName = (fullModelName) => {
+            if (!fullModelName) return "";
+            let name = fullModelName.toUpperCase()
+                .replace('GALAXY', '')
+                .replace('갤럭시', '')
+                .replace('IPHONE', '')
+                .replace('아이폰', '')
+                .trim();
+            name = name.replace('ULTRA', 'U').replace('울트라', 'U');
+            name = name.replace('PRO', 'P').replace('프로', 'P');
+            name = name.replace('MAX', 'M').replace('맥스', 'M');
+            name = name.replace('PLUS', '+').replace('플러스', '+');
+            name = name.replace(/\s/g, '');
+            if (name.startsWith('S') && /^\d/.test(name.slice(1))) name = name.substring(1);
+            return name;
+        };
+
+        const isModelMatch = (orderModel, filterKey) => {
+            const shortName = getShortModelName(orderModel);
+            if (filterKey === '전체') return true;
+            if (['23U', '24U', '25U'].includes(filterKey)) return shortName.startsWith(filterKey.replace('U', '')); 
+            if (filterKey === '17P') return shortName === '17P' || (shortName.includes('17P') && !shortName.includes('M'));
+            if (filterKey === '17PM') return shortName === '17PM' || shortName.includes('17PM');
+            return shortName.includes(filterKey);
+        };
+
+        const formatPhoneNumber = (value) => {
+            const numbers = value.replace(/[^\d]/g, '');
+            if (numbers.length <= 3) return numbers;
+            if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+            return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+        };
+
+        const safeFormatDate = (dateStr) => {
+            if (!dateStr) return '';
+            const str = String(dateStr).trim();
+            if (/^\d{2}\.\d{2}\.\d{2}$/.test(str)) return str;
+            if (/^\d{4}\.\d{2}\.\d{2}$/.test(str)) return str.slice(2);
+            try {
+                const d = new Date(str);
+                if (isNaN(d.getTime())) return str;
+                const year = d.getFullYear().toString().slice(-2);
+                const month = ('0' + (d.getMonth() + 1)).slice(-2);
+                const day = ('0' + d.getDate()).slice(-2);
+                return `${year}.${month}.${day}`;
+            } catch (e) {
+                return str;
+            }
+        };
+
+        const getStatusColor = (status) => {
+            switch (status) {
+                case '예약확정': return 'bg-blue-500';
+                case '대여중': return 'bg-green-500';
+                case '반납완료': return 'bg-gray-300';
+                case '연체중': return 'bg-red-500';
+                case '취소': return 'bg-orange-400';
+                default: return 'bg-gray-300';
+            }
+        };
+
+        const getStatusBadgeStyle = (status) => {
+            switch (status) {
+                case '예약확정': return 'bg-blue-50 text-blue-600 border-blue-100';
+                case '대여중': return 'bg-green-50 text-green-600 border-green-100';
+                case '반납완료': return 'bg-gray-50 text-gray-500 border-gray-100';
+                case '연체중': return 'bg-red-50 text-red-600 border-red-100';
+                case '취소': return 'bg-orange-50 text-orange-600 border-orange-100';
+                default: return 'bg-gray-50 text-gray-500 border-gray-100';
+            }
+        };
+
+        const renderTabIcon = (label) => {
+            if (label === '택배') return <Package className="w-3 h-3" />;
+            if (label === '공연장') return <MapPin className="w-3 h-3" />;
+            if (label === '퀵') return <Zap className="w-3 h-3" />;
+            if (label === '사무실') return <Building className="w-3 h-3" />;
+            return null;
+        };
+
+        const RentalAdminCompact = () => {
+            const [dateFilters, setDateFilters] = useState([]);
+            const [modelFilter, setModelFilter] = useState('전체');
+            const [methodFilter, setMethodFilter] = useState('전체');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [selectedOrder, setSelectedOrder] = useState(null);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [deviceInput, setDeviceInput] = useState('');
+            const [isOfflineMode, setIsOfflineMode] = useState(false);
+
+            // 초기 샘플 데이터
+            const initialData = [
+                { id: 1, time: '14:30', model: 'Galaxy S23 Ultra', qty: 1, user: '김민지', phone: '010-1234-5678', start: '25.12.25', event: '세븐틴 고척 콘서트', pickup: '택배', return: '택배', status: '예약확정', assigned: [], memo: '입금 확인 필요' },
+                { id: 2, time: '13:15', model: 'iPhone 17 Pro Max', qty: 2, user: '이서연', phone: '010-9876-5432', start: '25.12.26', event: 'NCT 127 팬미팅', pickup: '공연장', return: '공연장', status: '대여중', assigned: ['17PM02', '17PM05'], memo: '단골 고객' },
+                { id: 3, time: '09:00', model: '23u', qty: 1, user: '박지민', phone: '010-4444-5555', start: '25.12.28', event: '개인 촬영', pickup: '택배', return: '택배', status: '반납완료', assigned: ['23U18'], memo: '' },
+            ];
+
+            const [orders, setOrders] = useState(initialData);
+
+            const isDuplicateName = (currentOrder) => {
+                return orders.filter(o => 
+                    o.start === currentOrder.start && 
+                    o.user.replace(/\s/g, '') === currentOrder.user.replace(/\s/g, '') 
+                ).length > 1;
+            };
+
+            const fetchOrders = async () => {
+                setIsLoading(true);
+                setIsOfflineMode(false);
+                try {
+                    if (!GOOGLE_SHEET_URL) throw new Error("URL 없음");
+                    const response = await fetch(GOOGLE_SHEET_URL);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        setOrders(data.map(item => ({
+                            ...item,
+                            assigned: item.assigned || [],
+                            qty: parseInt(item.qty) || 1,
+                            memo: item.memo || '',
+                            start: safeFormatDate(item.start) 
+                        })));
+                    } else {
+                        throw new Error("데이터 형식 오류");
+                    }
+                } catch (error) {
+                    console.warn("시트 연동 실패 (로컬 데이터 사용):", error);
+                    setIsOfflineMode(true);
+                    if(orders.length <= 3) setOrders(initialData); // 초기 데이터가 적으면 샘플 유지
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            useEffect(() => { fetchOrders(); }, []);
+
+            const handleSaveChanges = async () => {
+                setOrders(prev => prev.map(o => o.id === selectedOrder.id ? selectedOrder : o));
+                setIsModalOpen(false);
+                if (GOOGLE_SHEET_URL && !isOfflineMode) {
+                    try {
+                        await fetch(GOOGLE_SHEET_URL, {
+                            method: "POST", mode: "no-cors",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "update", ...selectedOrder }),
+                        });
+                    } catch (error) { console.error("Save Error:", error); }
+                }
+            };
+
+            const handleQuickReturn = async (e, orderId) => {
+                e.stopPropagation();
+                const targetOrder = orders.find(o => o.id === orderId);
+                if (!targetOrder) return;
+                const updatedOrder = { ...targetOrder, status: '반납완료' };
+                setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+                if (GOOGLE_SHEET_URL && !isOfflineMode) {
+                    try {
+                        await fetch(GOOGLE_SHEET_URL, {
+                            method: "POST", mode: "no-cors",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "update", ...updatedOrder }),
+                        });
+                    } catch (error) { console.error("Quick Return Error:", error); }
+                }
+            };
+
+            const handleOrderClick = (order) => { setSelectedOrder({ ...order }); setDeviceInput(''); setIsModalOpen(true); };
+            const handleCloseModal = () => { setIsModalOpen(false); setSelectedOrder(null); };
+            const handleInputChange = (field, value) => {
+                if (field === 'phone') value = formatPhoneNumber(value);
+                setSelectedOrder(prev => ({ ...prev, [field]: value }));
+            };
+            const handleAddDevice = () => {
+                if (!deviceInput.trim()) return;
+                const shortModel = getShortModelName(selectedOrder.model);
+                const newDeviceTag = `${shortModel}${deviceInput}`; 
+                setSelectedOrder(prev => ({ ...prev, assigned: [...(prev.assigned || []), newDeviceTag] }));
+                setDeviceInput('');
+            };
+            const handleRemoveDevice = (index) => {
+                setSelectedOrder(prev => ({ ...prev, assigned: prev.assigned.filter((_, i) => i !== index) }));
+            };
+
+            // 필터링
+            const getFilteredOrders = () => {
+                let filtered = orders;
+                const thresholdDate = getThresholdDate();
+                filtered = filtered.filter(order => parseDateStr(order.start) >= thresholdDate);
+
+                if (searchTerm) {
+                    const term = searchTerm.trim().toLowerCase();
+                    filtered = filtered.filter(order => {
+                        const isNameMatch = order.user.toLowerCase().includes(term);
+                        const cleanPhone = order.phone.replace(/-/g, '');
+                        const lastFour = cleanPhone.slice(-4);
+                        const isPhoneMatch = term.length >= 4 && (cleanPhone === term || lastFour === term || order.phone === term);
+                        const isDeviceMatch = order.assigned && order.assigned.some(tag => {
+                            const match = tag.match(/(\d+)$/);
+                            const deviceNum = match ? match[1] : '';
+                            return deviceNum === term; 
+                        });
+                        const shortModel = getShortModelName(order.model).toLowerCase();
+                        const isModelMatch = shortModel.includes(term) || order.model.toLowerCase().includes(term);
+                        return isNameMatch || isPhoneMatch || isDeviceMatch || isModelMatch;
+                    });
+                }
+                if (dateFilters.length > 0) filtered = filtered.filter(order => dateFilters.includes(order.start));
+                if (modelFilter !== '전체') filtered = filtered.filter(o => isModelMatch(o.model, modelFilter));
+                if (methodFilter !== '전체') filtered = filtered.filter(order => order.pickup === methodFilter);
+                return filtered.sort((a, b) => a.start.localeCompare(b.start));
+            };
+            const filteredOrders = getFilteredOrders();
+
+            const toggleDateFilter = (dateLabel) => {
+                if (dateLabel === '전체') { setDateFilters([]); return; }
+                setDateFilters(prev => prev.includes(dateLabel) ? prev.filter(d => d !== dateLabel) : [...prev, dateLabel]);
+            };
+            const getOrdersForDate = () => dateFilters.length === 0 ? orders : orders.filter(o => dateFilters.includes(o.start));
+            const currentFilteredByDate = getOrdersForDate();
+            const countByModel = (keyword) => {
+                if (keyword === '전체') return currentFilteredByDate.length;
+                return currentFilteredByDate.filter(o => isModelMatch(o.model, keyword)).length;
+            };
+            const countByMethod = (keyword) => {
+                let base = currentFilteredByDate;
+                if (modelFilter !== '전체') base = base.filter(o => isModelMatch(o.model, modelFilter));
+                return base.filter(o => o.pickup === keyword).length;
+            };
+
+            const uniqueDates = [...new Set(orders.map(o => o.start))]
+                .filter(dateStr => parseDateStr(dateStr) >= getThresholdDate())
+                .sort();
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col font-sans select-none">
+                    <div className="sticky top-0 z-20 bg-white shadow-sm pb-1">
+                        <div className="px-4 pt-4 pb-2">
+                            <div className="flex justify-between items-center mb-3">
+                                <h1 className="text-xl font-bold text-gray-900">예약 관리</h1>
+                                <div className="flex gap-2 items-center">
+                                   {isLoading && <span className="text-xs text-gray-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /></span>}
+                                   {isOfflineMode && !isLoading && <span className="text-xs text-orange-500 font-bold flex items-center gap-1">⚠ 오프라인</span>}
+                                   <div className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">Total {orders.length}</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <input type="text" placeholder="고객명, 연락처, 기기번호 검색" className="w-full bg-gray-100 text-sm py-2.5 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                    <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+                                </div>
+                                <button onClick={fetchOrders} className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors active:scale-95 flex-shrink-0"><RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /></button>
+                            </div>
+                        </div>
+
+                        {/* 날짜 필터 */}
+                        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide">
+                            <button onClick={() => toggleDateFilter('전체')} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border min-w-[50px] ${dateFilters.length === 0 ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}>전체 <span className={`text-[8px] px-1 py-0.5 rounded-full ${dateFilters.length === 0 ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{orders.length}</span></button>
+                            {uniqueDates.map(date => {
+                                const isActive = dateFilters.includes(date);
+                                return <button key={date} onClick={() => toggleDateFilter(date)} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border min-w-[50px] ${isActive ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}>{date} <span className={`text-[8px] px-1 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{orders.filter(o => o.start === date).length}</span></button>
+                            })}
+                        </div>
+
+                        {/* 모델 필터 */}
+                        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide mt-1">
+                            <div className="flex items-center mr-1 text-gray-400"><Smartphone className="w-3.5 h-3.5" /></div>
+                            {['전체', '23U', '24U', '25U', '17P', '17PM'].map(tab => {
+                                const keyword = tab;
+                                const count = countByModel(keyword);
+                                return <button key={tab} onClick={() => setModelFilter(keyword)} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border min-w-[50px] ${modelFilter === keyword ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-100'} ${count === 0 ? 'opacity-40' : ''}`}>{tab}{tab !== '전체' && <span className={`text-[9px] px-1 py-0.5 rounded-full ${modelFilter === keyword ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{count}</span>}</button>
+                            })}
+                        </div>
+
+                        {/* 수령방법 필터 */}
+                        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide mt-1">
+                            <div className="flex items-center mr-1 text-gray-400"><SlidersHorizontal className="w-3.5 h-3.5" /></div>
+                            {['전체', '공연장', '택배', '퀵', '사무실'].map(label => {
+                                const count = label === '전체' ? currentFilteredByDate.length : countByMethod(label);
+                                return <button key={label} onClick={() => setMethodFilter(label)} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border min-w-[55px] ${methodFilter === label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-100'} ${count === 0 ? 'opacity-40' : ''}`}>{renderTabIcon(label)}{label}{label !== '전체' && <span className={`text-[9px] px-1 py-0.5 rounded-full ${methodFilter === label ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{count}</span>}</button>
+                            })}
+                        </div>
+                    </div>
+
+                    {/* 리스트 영역 */}
+                    <div className="flex-1 px-3 py-2 space-y-2 overflow-y-auto pb-20 bg-gray-50">
+                        {filteredOrders.length === 0 ? (
+                            <div className="h-64 flex flex-col items-center justify-center text-gray-400">
+                                {searchTerm ? <div className="text-center"><Search className="w-8 h-8 mb-2 opacity-30 mx-auto" /><p className="text-sm font-medium text-gray-600">검색 결과가 없습니다.</p></div> : <div className="text-center"><Smartphone className="w-8 h-8 mb-2 opacity-50 mx-auto" /><p className="text-sm">조건에 맞는 예약이 없습니다.</p></div>}
+                            </div>
+                        ) : (
+                            filteredOrders.map((order, index) => {
+                                const isDup = isDuplicateName(order);
+                                return (
+                                    <div key={order.id ? `${order.id}-${index}` : index} onClick={() => handleOrderClick(order)} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer">
+                                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${getStatusColor(order.status).split(' ')[0]}`} />
+                                        <div className="pl-4 pr-4 py-3">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <div className="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+                                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                                        <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{getShortModelName(order.model)}</span>
+                                                        {order.assigned && order.assigned.length > 0 && (<div className="flex gap-1">{order.assigned.map((tag, i) => { const shortModel = getShortModelName(order.model); const deviceNum = tag.replace(shortModel, '').replace('-', ''); return (<span key={i} className="bg-violet-100 text-violet-600 border border-violet-200 text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap flex items-center">{deviceNum}</span>); })}</div>)}
+                                                    </div>
+                                                    <div className="flex items-center gap-1 flex-shrink-0 ml-1 relative">
+                                                        <span className={`font-bold text-sm whitespace-nowrap ${isDup ? 'text-red-600' : 'text-gray-900'}`}>{order.user}</span>
+                                                        {isDup && (<div className="group relative"><AlertCircle className="w-3.5 h-3.5 text-red-600 animate-pulse cursor-help" /><div className="absolute left-1/2 bottom-full mb-1 transform -translate-x-1/2 hidden group-hover:block bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-50">동명이인 주의</div></div>)}
+                                                    </div>
+                                                    <div className="flex items-center truncate min-w-0 ml-1 gap-1.5">
+                                                        <span className="text-xs text-gray-500 truncate">{order.event}</span>
+                                                        {order.memo && order.memo.trim() !== '' && (<span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 truncate max-w-[120px] font-medium flex items-center gap-0.5">{order.memo}</span>)}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <div className="flex items-center">
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getStatusBadgeStyle(order.status)}`}>{order.status}</span>
+                                                        {(order.status === '대여중' || order.status === '연체중') && (<button onClick={(e) => handleQuickReturn(e, order.id)} className="ml-1 bg-white border border-gray-200 text-gray-400 hover:text-green-600 hover:border-green-400 hover:bg-green-50 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-all shadow-sm"><CheckCircle className="w-3 h-3" /><span className="leading-none pb-[1px]">반납</span></button>)}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-md"><Calendar className="w-3 h-3 text-blue-600" /><span className="text-[10px] font-bold text-blue-700 tracking-tight">{order.start}</span></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                                <div className="flex items-center gap-1.5 flex-1 justify-center"><span className="text-gray-500">수령</span><strong className="text-blue-600">{order.pickup}</strong></div>
+                                                <ArrowRight className="w-3 h-3 text-gray-300" />
+                                                <div className="flex items-center gap-1.5 flex-1 justify-center"><span className="text-gray-500">반납</span><strong className="text-red-500">{order.return}</strong></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* 상세 모달 */}
+                    {isModalOpen && selectedOrder && (
+                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
+                            <div className="bg-white w-full sm:w-[400px] h-[90vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slideUp">
+                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-lg font-bold text-gray-900">예약 상세 / 수정</h2><button onClick={handleCloseModal} className="p-2 -mr-2 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button></div>
+                                <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <label className="text-xs font-bold text-blue-800 mb-2 block flex items-center gap-1"><Smartphone className="w-3.5 h-3.5" /> 기기 배정 (출고 처리)</label>
+                                        <div className="flex gap-2 mb-3"><input type="number" placeholder="기기 번호 (예: 18)" className="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={deviceInput} onChange={(e) => setDeviceInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddDevice()} /><button onClick={handleAddDevice} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">추가</button></div>
+                                        <div className="flex flex-wrap gap-2">{selectedOrder.assigned && selectedOrder.assigned.length > 0 ? (selectedOrder.assigned.map((tag, idx) => { const shortModel = getShortModelName(selectedOrder.model); const deviceNum = tag.replace(shortModel, '').replace('-', ''); return (<div key={idx} className="flex items-center gap-1 bg-white border border-blue-200 text-blue-800 px-2 py-1 rounded text-sm font-medium shadow-sm"><span>#{deviceNum}</span><button onClick={() => handleRemoveDevice(idx)} className="text-blue-400 hover:text-red-500"><X className="w-3 h-3" /></button></div>) })) : <p className="text-xs text-blue-400">배정된 기기가 없습니다.</p>}</div>
+                                    </div>
+                                    <div className="space-y-3"><h3 className="text-sm font-bold text-gray-900 flex items-center gap-1"><User className="w-4 h-4" /> 고객 정보</h3><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 mb-1 block">이름</label><input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.user} onChange={(e) => handleInputChange('user', e.target.value)} /></div><div><label className="text-xs text-gray-500 mb-1 block">연락처</label><input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.phone} onChange={(e) => handleInputChange('phone', e.target.value)} /></div></div></div>
+                                    <div className="space-y-3"><h3 className="text-sm font-bold text-gray-900 flex items-center gap-1"><Calendar className="w-4 h-4" /> 일정 및 모델 정보</h3><div><label className="text-xs text-gray-500 mb-1 block">행사명</label><input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.event} onChange={(e) => handleInputChange('event', e.target.value)} /></div><div><label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><StickyNote className="w-3 h-3" /> 관리자 메모 (내부용)</label><textarea className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm h-20 resize-none focus:outline-none focus:ring-2 focus:ring-gray-900" value={selectedOrder.memo || ''} onChange={(e) => handleInputChange('memo', e.target.value)} placeholder="특이사항, 단골 여부 등 내부 메모를 입력하세요." /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 mb-1 block">대여 모델</label><select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.model} onChange={(e) => handleInputChange('model', e.target.value)}><option value="Galaxy S23 Ultra">23U (Galaxy S23 Ultra)</option><option value="Galaxy S24 Ultra">24U (Galaxy S24 Ultra)</option><option value="Galaxy S25 Ultra">25U (Galaxy S25 Ultra)</option><option value="iPhone 17 Pro">17P (iPhone 17 Pro)</option><option value="iPhone 17 Pro Max">17PM (iPhone 17 Pro Max)</option></select></div><div><label className="text-xs text-gray-500 mb-1 block">수량</label><input type="number" min="1" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.qty} onChange={(e) => handleInputChange('qty', parseInt(e.target.value) || 1)} /></div><div><label className="text-xs text-gray-500 mb-1 block">수령 방법</label><select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.pickup} onChange={(e) => handleInputChange('pickup', e.target.value)}><option value="공연장">공연장</option><option value="택배">택배</option><option value="퀵">퀵</option><option value="사무실">사무실</option></select></div><div><label className="text-xs text-gray-500 mb-1 block">반납 방법</label><select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.return} onChange={(e) => handleInputChange('return', e.target.value)}><option value="공연장">공연장</option><option value="택배">택배</option><option value="퀵">퀵</option><option value="사무실">사무실</option></select></div></div></div>
+                                    <div><h3 className="text-sm font-bold text-gray-900 mb-2">예약 상태</h3><div className="flex gap-2 flex-wrap">{['예약확정', '대여중', '반납완료', '취소'].map(status => (<button key={status} onClick={() => handleInputChange('status', status)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${selectedOrder.status === status ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>{status}</button>))}</div></div>
+                                </div>
+                                <div className="p-5 border-t border-gray-100 bg-gray-50 safe-area-pb"><button onClick={handleSaveChanges} className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2"><Save className="w-4 h-4" /> 변경사항 저장</button></div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<RentalAdminCompact />);
+    </script>
+</body>
+</html>

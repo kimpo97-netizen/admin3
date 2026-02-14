@@ -2,451 +2,785 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>폰 렌탈 서비스 관리자</title>
-    <!-- Tailwind CSS 불러오기 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="white">
+    <title>예약 관리자</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM 불러오기 -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel (JSX 변환용) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.min.css" />
     <style>
-        /* 스크롤바 숨기기 등 커스텀 스타일 */
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
+        :root {
+            --primary: #3B82F6; 
+            --bg-color: #F8FAFC; 
+            --card-bg: #FFFFFF;
+            --text-main: #0F172A; 
+            --text-sub: #64748B;  
+            --border: #E2E8F0;    
         }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+
+        body { 
+            font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color); 
+            color: var(--text-main);
+            -webkit-tap-highlight-color: transparent; 
+            letter-spacing: -0.02em; 
+            overflow-x: hidden;
+            width: 100%;
         }
-        /* 애니메이션 정의 */
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
-        .animate-slideUp { animation: slideUp 0.3s ease-out; }
+
+        body.modal-open { overflow: hidden; height: 100vh; position: fixed; width: 100%; }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px; 
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .card:active { background-color: #F1F5F9; border-color: #CBD5E1; transform: scale(0.97); }
+
+        .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; line-height: 1; height: 20px; border: 1px solid transparent; }
+        .status-wait { background-color: #F0F9FF; color: #0284C7; border-color: #BAE6FD; }
+        .status-confirm { background-color: #ECFDF5; color: #059669; border-color: #A7F3D0; }
+        .status-return { background-color: #F8FAFC; color: #475569; border-color: #E2E8F0; }
+        .status-cancel { background-color: #FEF2F2; color: #DC2626; border-color: #FECACA; }
+
+        .header-fixed {
+            background-color: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* 모달 시스템 (가로폭 100%로 고정하여 밀림 방지) */
+        #modal-root, #calendar-modal-root { 
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            z-index: 200; display: none; justify-content: flex-end; flex-direction: column; align-items: center; 
+        }
+        #modal-root.active, #calendar-modal-root.active { display: flex; }
+        
+        .modal-overlay { position: absolute; inset: 0; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); }
+
+        .bottom-sheet {
+            position: relative; width: 100%; max-width: 28rem; background-color: #FFFFFF;
+            border-top-left-radius: 28px; border-top-right-radius: 28px; height: 88vh;
+            display: flex; flex-direction: column; transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 210;
+        }
+        .calendar-sheet {
+            position: relative; width: 100%; max-width: 28rem; background-color: #FFFFFF;
+            border-top-left-radius: 28px; border-top-right-radius: 28px; padding-bottom: env(safe-area-inset-bottom);
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 310;
+        }
+
+        #modal-root.active .bottom-sheet, #calendar-modal-root.active .calendar-sheet { transform: translateY(0); }
+
+        .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px; }
+
+        .form-section { background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+        .form-title { font-size: 13px; font-weight: 800; color: #1E293B; margin-bottom: 12px; display: flex; align-items: center; }
+        .form-title::before { content: ''; width: 3px; height: 12px; background: var(--primary); margin-right: 8px; border-radius: 2px; }
+        .input-label { display: block; font-size: 11px; font-weight: 700; color: #64748B; margin-bottom: 5px; margin-left: 2px; }
+        .input-field { width: 100%; padding: 12px; background: white; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 14px; font-weight: 600; outline: none; }
+        .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+
+        .status-btn { border: 1px solid #E2E8F0; background: white; font-size: 12px; font-weight: 600; color: #64748B; padding: 12px 0; border-radius: 10px; transition: all 0.2s; }
+        .status-btn.active-wait { background: #F0F9FF; border-color: #7DD3FC; color: #0284C7; font-weight: 800; }
+        .status-btn.active-confirm { background: #ECFDF5; border-color: #6EE7B7; color: #059669; font-weight: 800; }
+        .status-btn.active-return { background: #F8FAFC; border-color: #94A3B8; color: #334155; font-weight: 800; }
+        .status-btn.active-cancel { background: #FEF2F2; border-color: #FCA5A5; color: #DC2626; font-weight: 800; }
+
+        .chip-btn { 
+            border: 1px solid var(--border); 
+            background: white; 
+            color: var(--text-sub); 
+            transition: all 0.1s; 
+            border-radius: 12px; 
+            font-size: 11px; 
+            font-weight: 700; 
+            padding: 6px 12px; 
+            white-space: nowrap; 
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 34px;
+        }
+        .chip-btn.active { background: #1E293B; color: white; border-color: #1E293B; }
+        .venue-active-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .sort-btn { 
+            border: 1px solid var(--border); 
+            background: white; 
+            color: var(--text-sub); 
+            transition: all 0.1s; 
+            border-radius: 12px; 
+            font-size: 12px; 
+            font-weight: 700; 
+            padding: 8px 12px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .sort-btn.active { background: #1E293B; color: white; border-color: #1E293B; }
+        
+        .header-input-box { height: 44px; display: flex; align-items: center; background: white; border: 1px solid #E2E8F0; border-radius: 14px; transition: all 0.2s; }
+        .header-input-box:active { background: #F8FAFC; transform: scale(0.98); }
+
+        .cal-day-cell { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; border-radius: 12px; transition: all 0.1s; }
+        .cal-day-cell:active { background-color: #F1F5F9; }
+        .cal-day-today { color: var(--primary); font-weight: 800; position: relative; }
+        .cal-day-today::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; background: var(--primary); border-radius: 50%; }
+        .cal-day-selected { background-color: var(--primary) !important; color: white !important; font-weight: 800; }
+        .cal-day-selected::after { display: none; }
+
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide-down { animation: slideDown 0.2s ease-out forwards; }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div id="root"></div>
+<body class="max-w-md mx-auto min-h-screen relative pb-safe">
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-
-        // --- 아이콘 컴포넌트 (Lucide 아이콘을 SVG로 직접 구현) ---
-        const IconBase = ({ children, className, ...props }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
-        );
-        const Search = (props) => <IconBase {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase>;
-        const MapPin = (props) => <IconBase {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
-        const Calendar = (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></IconBase>;
-        const Clock = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>;
-        const ArrowRight = (props) => <IconBase {...props}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></IconBase>;
-        const Smartphone = (props) => <IconBase {...props}><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></IconBase>;
-        const User = (props) => <IconBase {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
-        const FileText = (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase>;
-        const Package = (props) => <IconBase {...props}><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22v-9.96"/></IconBase>;
-        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
-        const SlidersHorizontal = (props) => <IconBase {...props}><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></IconBase>;
-        const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></IconBase>;
-        const Save = (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>;
-        const Plus = (props) => <IconBase {...props}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>;
-        const Trash2 = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>;
-        const Building = (props) => <IconBase {...props}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></IconBase>;
-        const AlertCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
-        const RefreshCw = (props) => <IconBase {...props}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconBase>;
-        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
-        const Loader2 = (props) => <IconBase {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></IconBase>;
-        const StickyNote = (props) => <IconBase {...props}><path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></IconBase>;
-        const Truck = (props) => <IconBase {...props}><path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"/><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"/><circle cx="7" cy="18" r="2"/><path d="M15 18H9"/><circle cx="17" cy="18" r="2"/></IconBase>;
-        const Ticket = (props) => <IconBase {...props}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></IconBase>;
-        const Bike = (props) => <IconBase {...props}><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></IconBase>;
-        const Store = (props) => <IconBase {...props}><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></IconBase>;
-        const ListFilter = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></IconBase>;
-
-        // --- 앱 설정 ---
-        // 여기에 배포한 구글 앱스 스크립트 URL을 입력하세요.
-        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzYaaFMrSE495T4nI97MmW6r43svqTzxhPpbiEqudOIC0FLSoQ2tD1QZ9X6KM46fVe_Gw/exec"; 
-
-        // --- 헬퍼 함수 ---
-        const parseDateStr = (dateStr) => {
-            if (!dateStr) return new Date(0);
-            const str = String(dateStr);
-            if (str.includes('-') || str.includes('T')) return new Date(str);
-            const parts = str.split('.');
-            if (parts.length === 3) {
-                const [yy, mm, dd] = parts.map(Number);
-                return new Date(2000 + yy, mm - 1, dd);
-            }
-            return new Date(str);
-        };
-
-        const getThresholdDate = () => {
-            const date = new Date();
-            date.setDate(date.getDate() - 2); 
-            date.setHours(0, 0, 0, 0); 
-            return date;
-        };
-
-        const getShortModelName = (fullModelName) => {
-            if (!fullModelName) return "";
-            let name = fullModelName.toUpperCase()
-                .replace('GALAXY', '')
-                .replace('갤럭시', '')
-                .replace('IPHONE', '')
-                .replace('아이폰', '')
-                .trim();
-            name = name.replace('ULTRA', 'U').replace('울트라', 'U');
-            name = name.replace('PRO', 'P').replace('프로', 'P');
-            name = name.replace('MAX', 'M').replace('맥스', 'M');
-            name = name.replace('PLUS', '+').replace('플러스', '+');
-            name = name.replace(/\s/g, '');
-            if (name.startsWith('S') && /^\d/.test(name.slice(1))) name = name.substring(1);
-            return name;
-        };
-
-        const isModelMatch = (orderModel, filterKey) => {
-            const shortName = getShortModelName(orderModel);
-            if (filterKey === '전체') return true;
-            if (['23U', '24U', '25U'].includes(filterKey)) return shortName.startsWith(filterKey.replace('U', '')); 
-            if (filterKey === '17P') return shortName === '17P' || (shortName.includes('17P') && !shortName.includes('M'));
-            if (filterKey === '17PM') return shortName === '17PM' || shortName.includes('17PM');
-            return shortName.includes(filterKey);
-        };
-
-        const formatPhoneNumber = (value) => {
-            const numbers = value.replace(/[^\d]/g, '');
-            if (numbers.length <= 3) return numbers;
-            if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-            return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
-        };
-
-        const safeFormatDate = (dateStr) => {
-            if (!dateStr) return '';
-            const str = String(dateStr).trim();
-            if (/^\d{2}\.\d{2}\.\d{2}$/.test(str)) return str;
-            if (/^\d{4}\.\d{2}\.\d{2}$/.test(str)) return str.slice(2);
-            try {
-                const d = new Date(str);
-                if (isNaN(d.getTime())) return str;
-                const year = d.getFullYear().toString().slice(-2);
-                const month = ('0' + (d.getMonth() + 1)).slice(-2);
-                const day = ('0' + d.getDate()).slice(-2);
-                return `${year}.${month}.${day}`;
-            } catch (e) {
-                return str;
-            }
-        };
-
-        const getStatusColor = (status) => {
-            switch (status) {
-                case '예약확정': return 'bg-blue-500';
-                case '대여중': return 'bg-green-500';
-                case '반납완료': return 'bg-gray-300';
-                case '연체중': return 'bg-red-500';
-                case '취소': return 'bg-orange-400';
-                default: return 'bg-gray-300';
-            }
-        };
-
-        const getStatusBadgeStyle = (status) => {
-            switch (status) {
-                case '예약확정': return 'bg-blue-50 text-blue-600 border-blue-100';
-                case '대여중': return 'bg-green-50 text-green-600 border-green-100';
-                case '반납완료': return 'bg-gray-50 text-gray-500 border-gray-100';
-                case '연체중': return 'bg-red-50 text-red-600 border-red-100';
-                case '취소': return 'bg-orange-50 text-orange-600 border-orange-100';
-                default: return 'bg-gray-50 text-gray-500 border-gray-100';
-            }
-        };
-
-        const renderTabIcon = (label) => {
-            if (label === '택배') return <Package className="w-3 h-3" />;
-            if (label === '공연장') return <MapPin className="w-3 h-3" />;
-            if (label === '퀵') return <Zap className="w-3 h-3" />;
-            if (label === '사무실') return <Building className="w-3 h-3" />;
-            return null;
-        };
-
-        const RentalAdminCompact = () => {
-            const [dateFilters, setDateFilters] = useState([]);
-            const [modelFilter, setModelFilter] = useState('전체');
-            const [methodFilter, setMethodFilter] = useState('전체');
-            const [searchTerm, setSearchTerm] = useState('');
-            const [isLoading, setIsLoading] = useState(false);
-            const [selectedOrder, setSelectedOrder] = useState(null);
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [deviceInput, setDeviceInput] = useState('');
-            const [isOfflineMode, setIsOfflineMode] = useState(false);
-
-            // 초기 샘플 데이터
-            const initialData = [
-                { id: 1, time: '14:30', model: 'Galaxy S23 Ultra', qty: 1, user: '김민지', phone: '010-1234-5678', start: '25.12.25', event: '세븐틴 고척 콘서트', pickup: '택배', return: '택배', status: '예약확정', assigned: [], memo: '입금 확인 필요' },
-                { id: 2, time: '13:15', model: 'iPhone 17 Pro Max', qty: 2, user: '이서연', phone: '010-9876-5432', start: '25.12.26', event: 'NCT 127 팬미팅', pickup: '공연장', return: '공연장', status: '대여중', assigned: ['17PM02', '17PM05'], memo: '단골 고객' },
-                { id: 3, time: '09:00', model: '23u', qty: 1, user: '박지민', phone: '010-4444-5555', start: '25.12.28', event: '개인 촬영', pickup: '택배', return: '택배', status: '반납완료', assigned: ['23U18'], memo: '' },
-            ];
-
-            const [orders, setOrders] = useState(initialData);
-
-            const isDuplicateName = (currentOrder) => {
-                return orders.filter(o => 
-                    o.start === currentOrder.start && 
-                    o.user.replace(/\s/g, '') === currentOrder.user.replace(/\s/g, '') 
-                ).length > 1;
-            };
-
-            const fetchOrders = async () => {
-                setIsLoading(true);
-                setIsOfflineMode(false);
-                try {
-                    if (!GOOGLE_SHEET_URL) throw new Error("URL 없음");
-                    const response = await fetch(GOOGLE_SHEET_URL);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        setOrders(data.map(item => ({
-                            ...item,
-                            assigned: item.assigned || [],
-                            qty: parseInt(item.qty) || 1,
-                            memo: item.memo || '',
-                            start: safeFormatDate(item.start) 
-                        })));
-                    } else {
-                        throw new Error("데이터 형식 오류");
-                    }
-                } catch (error) {
-                    console.warn("시트 연동 실패 (로컬 데이터 사용):", error);
-                    setIsOfflineMode(true);
-                    if(orders.length <= 3) setOrders(initialData); // 초기 데이터가 적으면 샘플 유지
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-
-            useEffect(() => { fetchOrders(); }, []);
-
-            const handleSaveChanges = async () => {
-                setOrders(prev => prev.map(o => o.id === selectedOrder.id ? selectedOrder : o));
-                setIsModalOpen(false);
-                if (GOOGLE_SHEET_URL && !isOfflineMode) {
-                    try {
-                        await fetch(GOOGLE_SHEET_URL, {
-                            method: "POST", mode: "no-cors",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ action: "update", ...selectedOrder }),
-                        });
-                    } catch (error) { console.error("Save Error:", error); }
-                }
-            };
-
-            const handleQuickReturn = async (e, orderId) => {
-                e.stopPropagation();
-                const targetOrder = orders.find(o => o.id === orderId);
-                if (!targetOrder) return;
-                const updatedOrder = { ...targetOrder, status: '반납완료' };
-                setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
-                if (GOOGLE_SHEET_URL && !isOfflineMode) {
-                    try {
-                        await fetch(GOOGLE_SHEET_URL, {
-                            method: "POST", mode: "no-cors",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ action: "update", ...updatedOrder }),
-                        });
-                    } catch (error) { console.error("Quick Return Error:", error); }
-                }
-            };
-
-            const handleOrderClick = (order) => { setSelectedOrder({ ...order }); setDeviceInput(''); setIsModalOpen(true); };
-            const handleCloseModal = () => { setIsModalOpen(false); setSelectedOrder(null); };
-            const handleInputChange = (field, value) => {
-                if (field === 'phone') value = formatPhoneNumber(value);
-                setSelectedOrder(prev => ({ ...prev, [field]: value }));
-            };
-            const handleAddDevice = () => {
-                if (!deviceInput.trim()) return;
-                const shortModel = getShortModelName(selectedOrder.model);
-                const newDeviceTag = `${shortModel}${deviceInput}`; 
-                setSelectedOrder(prev => ({ ...prev, assigned: [...(prev.assigned || []), newDeviceTag] }));
-                setDeviceInput('');
-            };
-            const handleRemoveDevice = (index) => {
-                setSelectedOrder(prev => ({ ...prev, assigned: prev.assigned.filter((_, i) => i !== index) }));
-            };
-
-            // 필터링
-            const getFilteredOrders = () => {
-                let filtered = orders;
-                const thresholdDate = getThresholdDate();
-                filtered = filtered.filter(order => parseDateStr(order.start) >= thresholdDate);
-
-                if (searchTerm) {
-                    const term = searchTerm.trim().toLowerCase();
-                    filtered = filtered.filter(order => {
-                        const isNameMatch = order.user.toLowerCase().includes(term);
-                        const cleanPhone = order.phone.replace(/-/g, '');
-                        const lastFour = cleanPhone.slice(-4);
-                        const isPhoneMatch = term.length >= 4 && (cleanPhone === term || lastFour === term || order.phone === term);
-                        const isDeviceMatch = order.assigned && order.assigned.some(tag => {
-                            const match = tag.match(/(\d+)$/);
-                            const deviceNum = match ? match[1] : '';
-                            return deviceNum === term; 
-                        });
-                        const shortModel = getShortModelName(order.model).toLowerCase();
-                        const isModelMatch = shortModel.includes(term) || order.model.toLowerCase().includes(term);
-                        return isNameMatch || isPhoneMatch || isDeviceMatch || isModelMatch;
-                    });
-                }
-                if (dateFilters.length > 0) filtered = filtered.filter(order => dateFilters.includes(order.start));
-                if (modelFilter !== '전체') filtered = filtered.filter(o => isModelMatch(o.model, modelFilter));
-                if (methodFilter !== '전체') filtered = filtered.filter(order => order.pickup === methodFilter);
-                return filtered.sort((a, b) => a.start.localeCompare(b.start));
-            };
-            const filteredOrders = getFilteredOrders();
-
-            const toggleDateFilter = (dateLabel) => {
-                if (dateLabel === '전체') { setDateFilters([]); return; }
-                setDateFilters(prev => prev.includes(dateLabel) ? prev.filter(d => d !== dateLabel) : [...prev, dateLabel]);
-            };
-            const getOrdersForDate = () => dateFilters.length === 0 ? orders : orders.filter(o => dateFilters.includes(o.start));
-            const currentFilteredByDate = getOrdersForDate();
-            const countByModel = (keyword) => {
-                if (keyword === '전체') return currentFilteredByDate.length;
-                return currentFilteredByDate.filter(o => isModelMatch(o.model, keyword)).length;
-            };
-            const countByMethod = (keyword) => {
-                let base = currentFilteredByDate;
-                if (modelFilter !== '전체') base = base.filter(o => isModelMatch(o.model, modelFilter));
-                return base.filter(o => o.pickup === keyword).length;
-            };
-
-            const uniqueDates = [...new Set(orders.map(o => o.start))]
-                .filter(dateStr => parseDateStr(dateStr) >= getThresholdDate())
-                .sort();
-
-            return (
-                <div className="min-h-screen bg-gray-50 flex flex-col font-sans select-none">
-                    <div className="sticky top-0 z-20 bg-white shadow-sm pb-1">
-                        <div className="px-4 pt-4 pb-2">
-                            <div className="flex justify-between items-center mb-3">
-                                <h1 className="text-xl font-bold text-gray-900">예약 관리</h1>
-                                <div className="flex gap-2 items-center">
-                                   {isLoading && <span className="text-xs text-gray-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /></span>}
-                                   {isOfflineMode && !isLoading && <span className="text-xs text-orange-500 font-bold flex items-center gap-1">⚠ 오프라인</span>}
-                                   <div className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">Total {orders.length}</div>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <input type="text" placeholder="고객명, 연락처, 기기번호 검색" className="w-full bg-gray-100 text-sm py-2.5 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                                    <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-                                </div>
-                                <button onClick={fetchOrders} className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors active:scale-95 flex-shrink-0"><RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /></button>
-                            </div>
-                        </div>
-
-                        {/* 날짜 필터 */}
-                        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide">
-                            <button onClick={() => toggleDateFilter('전체')} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border min-w-[50px] ${dateFilters.length === 0 ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}>전체 <span className={`text-[8px] px-1 py-0.5 rounded-full ${dateFilters.length === 0 ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{orders.length}</span></button>
-                            {uniqueDates.map(date => {
-                                const isActive = dateFilters.includes(date);
-                                return <button key={date} onClick={() => toggleDateFilter(date)} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border min-w-[50px] ${isActive ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}>{date} <span className={`text-[8px] px-1 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{orders.filter(o => o.start === date).length}</span></button>
-                            })}
-                        </div>
-
-                        {/* 모델 필터 */}
-                        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide mt-1">
-                            <div className="flex items-center mr-1 text-gray-400"><Smartphone className="w-3.5 h-3.5" /></div>
-                            {['전체', '23U', '24U', '25U', '17P', '17PM'].map(tab => {
-                                const keyword = tab;
-                                const count = countByModel(keyword);
-                                return <button key={tab} onClick={() => setModelFilter(keyword)} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border min-w-[50px] ${modelFilter === keyword ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-100'} ${count === 0 ? 'opacity-40' : ''}`}>{tab}{tab !== '전체' && <span className={`text-[9px] px-1 py-0.5 rounded-full ${modelFilter === keyword ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{count}</span>}</button>
-                            })}
-                        </div>
-
-                        {/* 수령방법 필터 */}
-                        <div className="flex overflow-x-auto px-4 pb-2 gap-1.5 scrollbar-hide mt-1">
-                            <div className="flex items-center mr-1 text-gray-400"><SlidersHorizontal className="w-3.5 h-3.5" /></div>
-                            {['전체', '공연장', '택배', '퀵', '사무실'].map(label => {
-                                const count = label === '전체' ? currentFilteredByDate.length : countByMethod(label);
-                                return <button key={label} onClick={() => setMethodFilter(label)} className={`flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border min-w-[55px] ${methodFilter === label ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-100'} ${count === 0 ? 'opacity-40' : ''}`}>{renderTabIcon(label)}{label}{label !== '전체' && <span className={`text-[9px] px-1 py-0.5 rounded-full ${methodFilter === label ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{count}</span>}</button>
-                            })}
-                        </div>
-                    </div>
-
-                    {/* 리스트 영역 */}
-                    <div className="flex-1 px-3 py-2 space-y-2 overflow-y-auto pb-20 bg-gray-50">
-                        {filteredOrders.length === 0 ? (
-                            <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-                                {searchTerm ? <div className="text-center"><Search className="w-8 h-8 mb-2 opacity-30 mx-auto" /><p className="text-sm font-medium text-gray-600">검색 결과가 없습니다.</p></div> : <div className="text-center"><Smartphone className="w-8 h-8 mb-2 opacity-50 mx-auto" /><p className="text-sm">조건에 맞는 예약이 없습니다.</p></div>}
-                            </div>
-                        ) : (
-                            filteredOrders.map((order, index) => {
-                                const isDup = isDuplicateName(order);
-                                return (
-                                    <div key={order.id ? `${order.id}-${index}` : index} onClick={() => handleOrderClick(order)} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer">
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${getStatusColor(order.status).split(' ')[0]}`} />
-                                        <div className="pl-4 pr-4 py-3">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <div className="flex items-center gap-2 overflow-hidden flex-1 mr-2">
-                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                        <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{getShortModelName(order.model)}</span>
-                                                        {order.assigned && order.assigned.length > 0 && (<div className="flex gap-1">{order.assigned.map((tag, i) => { const shortModel = getShortModelName(order.model); const deviceNum = tag.replace(shortModel, '').replace('-', ''); return (<span key={i} className="bg-violet-100 text-violet-600 border border-violet-200 text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap flex items-center">{deviceNum}</span>); })}</div>)}
-                                                    </div>
-                                                    <div className="flex items-center gap-1 flex-shrink-0 ml-1 relative">
-                                                        <span className={`font-bold text-sm whitespace-nowrap ${isDup ? 'text-red-600' : 'text-gray-900'}`}>{order.user}</span>
-                                                        {isDup && (<div className="group relative"><AlertCircle className="w-3.5 h-3.5 text-red-600 animate-pulse cursor-help" /><div className="absolute left-1/2 bottom-full mb-1 transform -translate-x-1/2 hidden group-hover:block bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-50">동명이인 주의</div></div>)}
-                                                    </div>
-                                                    <div className="flex items-center truncate min-w-0 ml-1 gap-1.5">
-                                                        <span className="text-xs text-gray-500 truncate">{order.event}</span>
-                                                        {order.memo && order.memo.trim() !== '' && (<span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 truncate max-w-[120px] font-medium flex items-center gap-0.5">{order.memo}</span>)}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 flex-shrink-0">
-                                                    <div className="flex items-center">
-                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getStatusBadgeStyle(order.status)}`}>{order.status}</span>
-                                                        {(order.status === '대여중' || order.status === '연체중') && (<button onClick={(e) => handleQuickReturn(e, order.id)} className="ml-1 bg-white border border-gray-200 text-gray-400 hover:text-green-600 hover:border-green-400 hover:bg-green-50 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-all shadow-sm"><CheckCircle className="w-3 h-3" /><span className="leading-none pb-[1px]">반납</span></button>)}
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-md"><Calendar className="w-3 h-3 text-blue-600" /><span className="text-[10px] font-bold text-blue-700 tracking-tight">{order.start}</span></div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs bg-gray-50 p-2 rounded-lg border border-gray-100">
-                                                <div className="flex items-center gap-1.5 flex-1 justify-center"><span className="text-gray-500">수령</span><strong className="text-blue-600">{order.pickup}</strong></div>
-                                                <ArrowRight className="w-3 h-3 text-gray-300" />
-                                                <div className="flex items-center gap-1.5 flex-1 justify-center"><span className="text-gray-500">반납</span><strong className="text-red-500">{order.return}</strong></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-
-                    {/* 상세 모달 */}
-                    {isModalOpen && selectedOrder && (
-                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
-                            <div className="bg-white w-full sm:w-[400px] h-[90vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slideUp">
-                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-lg font-bold text-gray-900">예약 상세 / 수정</h2><button onClick={handleCloseModal} className="p-2 -mr-2 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button></div>
-                                <div className="flex-1 overflow-y-auto p-5 space-y-6">
-                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                                        <label className="text-xs font-bold text-blue-800 mb-2 block flex items-center gap-1"><Smartphone className="w-3.5 h-3.5" /> 기기 배정 (출고 처리)</label>
-                                        <div className="flex gap-2 mb-3"><input type="number" placeholder="기기 번호 (예: 18)" className="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={deviceInput} onChange={(e) => setDeviceInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddDevice()} /><button onClick={handleAddDevice} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">추가</button></div>
-                                        <div className="flex flex-wrap gap-2">{selectedOrder.assigned && selectedOrder.assigned.length > 0 ? (selectedOrder.assigned.map((tag, idx) => { const shortModel = getShortModelName(selectedOrder.model); const deviceNum = tag.replace(shortModel, '').replace('-', ''); return (<div key={idx} className="flex items-center gap-1 bg-white border border-blue-200 text-blue-800 px-2 py-1 rounded text-sm font-medium shadow-sm"><span>#{deviceNum}</span><button onClick={() => handleRemoveDevice(idx)} className="text-blue-400 hover:text-red-500"><X className="w-3 h-3" /></button></div>) })) : <p className="text-xs text-blue-400">배정된 기기가 없습니다.</p>}</div>
-                                    </div>
-                                    <div className="space-y-3"><h3 className="text-sm font-bold text-gray-900 flex items-center gap-1"><User className="w-4 h-4" /> 고객 정보</h3><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 mb-1 block">이름</label><input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.user} onChange={(e) => handleInputChange('user', e.target.value)} /></div><div><label className="text-xs text-gray-500 mb-1 block">연락처</label><input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.phone} onChange={(e) => handleInputChange('phone', e.target.value)} /></div></div></div>
-                                    <div className="space-y-3"><h3 className="text-sm font-bold text-gray-900 flex items-center gap-1"><Calendar className="w-4 h-4" /> 일정 및 모델 정보</h3><div><label className="text-xs text-gray-500 mb-1 block">행사명</label><input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.event} onChange={(e) => handleInputChange('event', e.target.value)} /></div><div><label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><StickyNote className="w-3 h-3" /> 관리자 메모 (내부용)</label><textarea className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm h-20 resize-none focus:outline-none focus:ring-2 focus:ring-gray-900" value={selectedOrder.memo || ''} onChange={(e) => handleInputChange('memo', e.target.value)} placeholder="특이사항, 단골 여부 등 내부 메모를 입력하세요." /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 mb-1 block">대여 모델</label><select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.model} onChange={(e) => handleInputChange('model', e.target.value)}><option value="Galaxy S23 Ultra">23U (Galaxy S23 Ultra)</option><option value="Galaxy S24 Ultra">24U (Galaxy S24 Ultra)</option><option value="Galaxy S25 Ultra">25U (Galaxy S25 Ultra)</option><option value="iPhone 17 Pro">17P (iPhone 17 Pro)</option><option value="iPhone 17 Pro Max">17PM (iPhone 17 Pro Max)</option></select></div><div><label className="text-xs text-gray-500 mb-1 block">수량</label><input type="number" min="1" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.qty} onChange={(e) => handleInputChange('qty', parseInt(e.target.value) || 1)} /></div><div><label className="text-xs text-gray-500 mb-1 block">수령 방법</label><select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.pickup} onChange={(e) => handleInputChange('pickup', e.target.value)}><option value="공연장">공연장</option><option value="택배">택배</option><option value="퀵">퀵</option><option value="사무실">사무실</option></select></div><div><label className="text-xs text-gray-500 mb-1 block">반납 방법</label><select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm" value={selectedOrder.return} onChange={(e) => handleInputChange('return', e.target.value)}><option value="공연장">공연장</option><option value="택배">택배</option><option value="퀵">퀵</option><option value="사무실">사무실</option></select></div></div></div>
-                                    <div><h3 className="text-sm font-bold text-gray-900 mb-2">예약 상태</h3><div className="flex gap-2 flex-wrap">{['예약확정', '대여중', '반납완료', '취소'].map(status => (<button key={status} onClick={() => handleInputChange('status', status)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${selectedOrder.status === status ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>{status}</button>))}</div></div>
-                                </div>
-                                <div className="p-5 border-t border-gray-100 bg-gray-50 safe-area-pb"><button onClick={handleSaveChanges} className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2"><Save className="w-4 h-4" /> 변경사항 저장</button></div>
-                            </div>
-                        </div>
-                    )}
+    <!-- 1. 헤더 영역 -->
+    <header class="sticky top-0 z-30 header-fixed pt-safe bg-white/95">
+        <div class="px-4 pt-4 pb-3">
+            <!-- [ROW 1] 검색바 / 공연장모드 / 새로고침 -->
+            <div class="flex items-center gap-2 mb-3">
+                <!-- 검색바 -->
+                <div class="flex-1 relative h-[44px] bg-slate-50 border border-slate-200 rounded-xl flex items-center px-3 transition-all focus-within:bg-white focus-within:border-blue-400 shadow-sm">
+                    <svg class="text-slate-400 mr-2 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" id="search-input" onkeyup="filterData()" placeholder="이름/번호/수령" class="w-full bg-transparent border-none text-[13px] font-bold text-slate-900 placeholder-slate-400 outline-none p-0 h-full">
                 </div>
-            );
-        };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<RentalAdminCompact />);
+                <!-- 공연장 버튼 -->
+                <button id="venue-toggle" onclick="toggleVenueMode()" 
+                    class="w-[130px] flex items-center justify-center h-[44px] px-2 rounded-xl text-[11px] font-extrabold border border-slate-200 bg-white text-slate-500 active:bg-slate-50 transition-colors shadow-sm shrink-0 whitespace-nowrap">
+                    <span id="venue-dot" class="w-1.5 h-1.5 rounded-full bg-slate-300 mr-1.5 transition-colors"></span>
+                    공연장 모드
+                </button>
+
+                <!-- 새로고침 버튼 -->
+                <button onclick="fetchData()" class="w-[44px] h-[44px] flex items-center justify-center bg-slate-50 rounded-xl text-slate-600 active:bg-slate-200 transition-all border border-slate-200 shadow-sm shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                </button>
+            </div>
+
+            <input type="date" id="filter-date" class="hidden">
+            
+            <!-- 날짜 선택 표시 바 (선택 시 노출) -->
+            <div id="active-date-bar" class="hidden mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl flex justify-between items-center animate-slide-down">
+                <div onclick="openCalendar()" class="flex items-center gap-1.5 text-blue-600 text-xs font-bold cursor-pointer flex-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span id="active-date-text"></span>
+                </div>
+                <button onclick="clearDate(event)" class="text-blue-400 hover:text-blue-600 font-bold text-[10px] px-2 py-1 bg-white rounded-lg border border-blue-100">초기화</button>
+            </div>
+            
+            <div class="flex flex-col gap-3">
+                <!-- [ROW 3] 기종 필터 (백업, 연장 추가) -->
+                <div id="model-filters" class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
+                    <button onclick="setModelFilter('all')" class="chip-btn model-filter-item active" data-model="all">전체</button>
+                    <button onclick="setModelFilter('23U')" class="chip-btn model-filter-item" data-model="23U">23U</button>
+                    <button onclick="setModelFilter('24U')" class="chip-btn model-filter-item" data-model="24U">24U</button>
+                    <button onclick="setModelFilter('25U')" class="chip-btn model-filter-item" data-model="25U">25U</button>
+                    <button onclick="setModelFilter('17P')" class="chip-btn model-filter-item" data-model="17P">17P</button>
+                    <button onclick="setModelFilter('17PM')" class="chip-btn model-filter-item" data-model="17PM">17PM</button>
+                    <button onclick="setModelFilter('백업')" class="chip-btn model-filter-item" data-model="백업">백업</button>
+                    <button onclick="setModelFilter('연장')" class="chip-btn model-filter-item" data-model="연장">연장</button>
+                </div>
+
+                <!-- [ROW 4] 정렬 필터 + 날짜 버튼 & 공연장 상세 필터 -->
+                <!-- 일반 모드 -->
+                <div id="normal-filters" class="flex gap-2">
+                    <button onclick="setSort('time')" class="sort-btn active flex-1" id="sort-btn-time">
+                        <span class="mr-1">🕒</span> 최신순
+                    </button>
+                    <button onclick="setSort('model')" class="sort-btn flex-1" id="sort-btn-model">
+                        <span class="mr-1">📱</span> 기종순
+                    </button>
+                    <button onclick="openCalendar()" class="sort-btn flex-1" id="btn-date-select">
+                        <span class="mr-1">📅</span> 날짜
+                    </button>
+                </div>
+
+                <!-- 공연장 모드 -->
+                <div id="venue-filters" class="hidden flex gap-1.5 w-full">
+                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn venue-active-btn active w-1/2 text-[12px]" data-val="venue_remaining">남은 0</button>
+                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn venue-active-btn w-1/2 text-[12px]" data-val="venue_pickedup">수령 0</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. 리스트 영역 -->
+    <main id="main-content" class="px-4 py-3 pb-32">
+        <div id="loading" class="flex flex-col items-center justify-center py-24">
+            <div class="w-9 h-9 border-4 border-slate-100 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+            <p class="text-[13px] font-bold text-slate-400">목록을 불러오는 중...</p>
+        </div>
+        <div id="list-container" class="space-y-3"></div>
+    </main>
+
+    <!-- 3. 상세 정보 모달 -->
+    <div id="modal-root">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="bottom-sheet">
+            <div class="px-6 py-5 border-b border-slate-200 flex-none bg-white rounded-t-[28px] flex justify-between items-center shadow-sm">
+                <h2 class="text-[19px] font-black text-slate-900 tracking-tight">예약 상세 내용</h2>
+                <button type="button" onclick="closeModal()" class="p-2 bg-slate-100 rounded-full text-slate-500 active:scale-90">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="scroll-area bg-[#F9FAFB]">
+                <form id="edit-form" onsubmit="submitUpdate(event)">
+                    <input type="hidden" id="edit-row">
+                    <div class="flex justify-center mb-6">
+                        <span id="display-order-time" class="text-[11px] font-bold text-slate-400 bg-white px-4 py-1.5 rounded-full border border-slate-200 shadow-sm">접수: -</span>
+                    </div>
+
+                    <div class="form-section shadow-sm">
+                        <div class="form-title">고객 기본 정보</div>
+                        <div class="grid grid-cols-12 gap-3">
+                            <div class="col-span-4 input-group"><label class="input-label">이름</label><input type="text" id="edit-name" class="input-field"></div>
+                            <div class="col-span-8 input-group">
+                                <label class="input-label">연락처</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="edit-phone" class="input-field font-mono">
+                                    <a id="btn-call" href="#" class="w-[52px] flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl border border-blue-100 active:bg-blue-100">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section shadow-sm">
+                        <div class="form-title">상태 및 기기 관리</div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="input-label">진행 상태</label>
+                                <input type="hidden" id="edit-status-val">
+                                <div class="grid grid-cols-4 gap-1.5">
+                                    <button type="button" onclick="setEditStatus('예약신청')" id="btn-status-wait" class="status-btn">신청</button>
+                                    <button type="button" onclick="setEditStatus('확정')" id="btn-status-confirm" class="status-btn">확정</button>
+                                    <button type="button" onclick="setEditStatus('반납완료')" id="btn-status-return" class="status-btn">반납</button>
+                                    <button type="button" onclick="setEditStatus('취소')" id="btn-status-cancel" class="status-btn">취소</button>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="flex-[2]"><label class="input-label">배정 기기명</label><input type="text" id="edit-model" placeholder="예: S24U12" class="input-field"></div>
+                                <div class="flex-1">
+                                    <label class="input-label">옵션</label>
+                                    <label class="checkbox-wrapper cursor-pointer block h-[46px]">
+                                        <input type="checkbox" id="edit-battery" class="hidden">
+                                        <div id="battery-box" class="w-full h-full border border-slate-200 rounded-xl flex flex-col items-center justify-center bg-white transition-all">
+                                            <span class="text-sm">⚡</span><span class="text-[10px] font-bold text-slate-600">배터리</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div><label class="input-label">송장번호</label><input type="text" id="edit-tracking" placeholder="숫자만 입력" inputmode="numeric" class="input-field font-mono"></div>
+                            <div><label class="input-label">메모</label><textarea id="edit-memo" rows="2" placeholder="메모 입력" class="input-field resize-none"></textarea></div>
+                        </div>
+                    </div>
+
+                    <div class="form-section shadow-sm">
+                        <div class="form-title">대여 일정 및 방식</div>
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div><label class="input-label">수령일</label><input type="date" id="edit-start" class="input-field"></div>
+                            <div><label class="input-label">반납일</label><input type="date" id="edit-end" class="input-field"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="input-label">수령 방법</label><input type="text" id="edit-delivery" class="input-field"></div>
+                            <div><label class="input-label">반납 방법</label><input type="text" id="edit-return-way" class="input-field"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="p-5 bg-white border-t border-slate-100 flex gap-3 pb-10">
+                <button type="button" onclick="confirmDelete()" class="w-1/4 bg-red-50 text-red-600 border border-red-100 font-bold py-4 rounded-2xl text-[13px] active:scale-95">삭제</button>
+                <button type="button" onclick="submitUpdate()" id="save-btn" class="w-3/4 bg-blue-600 text-white font-bold py-4 rounded-2xl text-[15px] shadow-lg shadow-blue-100 active:scale-95">수정 완료하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 캘린더 모달 -->
+    <div id="calendar-modal-root">
+        <div class="modal-overlay" onclick="closeCalendar()"></div>
+        <div class="calendar-sheet">
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-slate-800">수령일 선택</h2>
+                <button onclick="closeCalendar()" class="p-2 -mr-2 text-slate-400"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="p-5">
+                <div class="flex justify-between items-center mb-6">
+                    <button onclick="moveMonth(-1)" class="p-2 text-slate-500 active:bg-slate-100 rounded-full"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                    <div id="cal-month-title" class="text-xl font-black text-slate-900"></div>
+                    <button onclick="moveMonth(1)" class="p-2 text-slate-500 active:bg-slate-100 rounded-full"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+                </div>
+                <div class="grid grid-cols-7 text-center mb-3">
+                    <div class="text-[11px] font-bold text-red-400">일</div>
+                    <div class="text-[11px] font-bold text-slate-400">월</div>
+                    <div class="text-[11px] font-bold text-slate-400">화</div>
+                    <div class="text-[11px] font-bold text-slate-400">수</div>
+                    <div class="text-[11px] font-bold text-slate-400">목</div>
+                    <div class="text-[11px] font-bold text-slate-400">금</div>
+                    <div class="text-[11px] font-bold text-blue-400">토</div>
+                </div>
+                <div id="cal-grid" class="grid grid-cols-7 gap-y-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div id="alert-modal" class="fixed inset-0 z-[1000] hidden flex items-center justify-center px-8">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onclick="closeAlert()"></div>
+        <div class="bg-white w-full max-w-[300px] rounded-3xl p-6 relative z-10 shadow-2xl border border-slate-100 text-center">
+            <div id="alert-icon" class="text-3xl mb-3">🔔</div>
+            <h3 id="alert-title" class="text-lg font-bold text-slate-800 mb-1">알림</h3>
+            <p id="alert-msg" class="text-sm text-slate-600 mb-6 break-keep leading-relaxed"></p>
+            <div id="alert-actions" class="flex flex-col gap-2"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbyDsU0D8lzob5uA5abTkbC2camJ9yhlZHIRxBhov-njJRNyE3EV5eUrSFROgK-tT9u1sw/exec"; 
+
+        let allData = [];
+        let currentFilter = 'all';
+        let currentModelFilter = 'all';
+        let currentSort = 'time'; 
+        let isVenueMode = false;
+        let selectedDate = null; 
+        let calCurrentDate = new Date(); 
+
+        window.onload = () => fetchData();
+
+        async function fetchData() {
+            toggleLoading(true);
+            try {
+                const res = await fetch(`${API_URL}?type=admin_list`);
+                const json = await res.json();
+                if(json.result === 'success') {
+                    allData = json.data;
+                    updateModelButtonCounts(allData); 
+                    filterData();
+                } else { showAlert("데이터 로드 실패", "오류", "❌"); }
+            } catch(e) { showAlert("연결 실패", "네트워크 오류", "📡"); } 
+            finally { toggleLoading(false); }
+        }
+
+        function toggleLoading(show) {
+            const list = document.getElementById('list-container');
+            const loader = document.getElementById('loading');
+            if(show) { list.innerHTML = ''; loader.classList.remove('hidden'); }
+            else { loader.classList.add('hidden'); }
+        }
+
+        function toggleVenueMode() {
+            isVenueMode = !isVenueMode;
+            const btn = document.getElementById('venue-toggle');
+            const dot = document.getElementById('venue-dot');
+            const venueFilters = document.getElementById('venue-filters');
+            const normalFilters = document.getElementById('normal-filters');
+
+            if(isVenueMode) {
+                // ON
+                btn.className = "w-[130px] flex items-center justify-center h-[44px] px-2 rounded-xl text-[11px] font-extrabold border border-blue-500 bg-blue-50 text-blue-600 shadow-sm active:scale-95 shrink-0 whitespace-nowrap transition-colors";
+                dot.className = "w-2 h-2 rounded-full bg-blue-500 mr-2 transition-colors";
+                normalFilters.classList.add('hidden');
+                venueFilters.classList.remove('hidden');
+                setVenueFilter('venue_remaining'); 
+            } else {
+                // OFF
+                btn.className = "w-[130px] flex items-center justify-center h-[44px] px-2 rounded-xl text-[11px] font-extrabold border border-slate-200 bg-white text-slate-500 active:bg-slate-50 transition-colors shadow-sm shrink-0 whitespace-nowrap";
+                dot.className = "w-2 h-2 rounded-full bg-slate-300 mr-2";
+                venueFilters.classList.add('hidden');
+                normalFilters.classList.remove('hidden');
+                setSort('time'); 
+            }
+        }
+
+        function setSort(mode) {
+            currentSort = mode;
+            const timeBtn = document.getElementById('sort-btn-time');
+            const modelBtn = document.getElementById('sort-btn-model');
+            if(mode === 'time') {
+                timeBtn.classList.add('active');
+                modelBtn.classList.remove('active');
+            } else {
+                modelBtn.classList.add('active');
+                timeBtn.classList.remove('active');
+            }
+            filterData();
+        }
+
+        function setVenueFilter(val) {
+            currentFilter = val;
+            document.querySelectorAll('.venue-active-btn').forEach(btn => {
+                if(btn.dataset.val === val) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            filterData();
+        }
+
+        function setModelFilter(model) {
+            currentModelFilter = model;
+            document.querySelectorAll('.model-filter-item').forEach(btn => {
+                if(btn.dataset.model === model) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            filterData();
+        }
+
+        // [CALENDAR]
+        function openCalendar() {
+            calCurrentDate = selectedDate ? new Date(selectedDate) : new Date();
+            renderCalendar();
+            const root = document.getElementById('calendar-modal-root');
+            root.classList.add('active');
+            document.body.classList.add('modal-open');
+        }
+        function closeCalendar() {
+            const root = document.getElementById('calendar-modal-root');
+            root.classList.remove('active');
+            document.body.classList.remove('modal-open');
+        }
+        function moveMonth(step) {
+            calCurrentDate.setMonth(calCurrentDate.getMonth() + step);
+            renderCalendar();
+        }
+        function renderCalendar() {
+            const year = calCurrentDate.getFullYear();
+            const month = calCurrentDate.getMonth();
+            document.getElementById('cal-month-title').innerText = `${year}년 ${month + 1}월`;
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('cal-grid');
+            grid.innerHTML = '';
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+            const todayStr = new Date().toISOString().split('T')[0];
+            for(let d=1; d<=lastDate; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                let classes = "cal-day-cell cursor-pointer";
+                if(dateStr === todayStr) classes += " cal-day-today";
+                if(dateStr === selectedDate) classes += " cal-day-selected";
+                const div = document.createElement('div');
+                div.className = classes; div.innerText = d; div.onclick = () => selectDate(dateStr);
+                grid.appendChild(div);
+            }
+        }
+        function selectDate(dateStr) {
+            selectedDate = dateStr;
+            const [y,m,d] = dateStr.split('-');
+            const displayDate = `${parseInt(m)}월 ${parseInt(d)}일`;
+            document.getElementById('active-date-bar').classList.remove('hidden');
+            document.getElementById('active-date-text').innerText = `선택된 날짜: ${displayDate}`;
+            closeCalendar();
+            filterData();
+        }
+        function clearDate(e) {
+            if(e) e.stopPropagation();
+            selectedDate = null;
+            document.getElementById('active-date-bar').classList.add('hidden');
+            filterData();
+        }
+
+        function filterData() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            let venueRem = 0, venuePick = 0;
+
+            const baseFiltered = allData.filter(item => {
+                // [수정] 검색 조건에 배정된 기기번호와 수령방법 추가
+                const matchQuery = (item.name && item.name.includes(query)) || 
+                                   (item.phone && item.phone.includes(query)) ||
+                                   (item.model && item.model.includes(query)) ||
+                                   (item.delivery && item.delivery.includes(query));
+                
+                let matchDate = true;
+                if(selectedDate && item.startDate) matchDate = (selectedDate === item.startDate);
+
+                let matchVenue = true;
+                if(isVenueMode) {
+                    const delivery = item.delivery || '';
+                    if(!delivery.includes('공연') && !delivery.includes('현장')) matchVenue = false;
+                }
+
+                // 일반 모드일 때 상태 필터 제거됨 -> 모든 상태 표시 (기본)
+
+                return matchQuery && matchDate && matchVenue;
+            });
+
+            updateModelButtonCounts(baseFiltered);
+
+            const finalFiltered = baseFiltered.filter(item => {
+                let rawModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim(); 
+                // [수정] 데이터 백업 등 모델명이 'all'일때 포함되도록 보완
+                const matchModel = (currentModelFilter === 'all') || (rawModel.toUpperCase().includes(currentModelFilter));
+                
+                if(isVenueMode) {
+                    const isAssigned = /\d$/.test(rawModel);
+                    if(isAssigned) venuePick++; else venueRem++; 
+
+                    if(currentFilter === 'venue_remaining' && isAssigned) return false;
+                    if(currentFilter === 'venue_pickedup' && !isAssigned) return false;
+                }
+                return matchModel;
+            });
+
+            // [정렬 로직]
+            if (currentSort === 'model') {
+                finalFiltered.sort((a, b) => {
+                    const modelA = (a.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim();
+                    const modelB = (b.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim();
+                    return modelA.localeCompare(modelB);
+                });
+            } else {
+                // [수정] 최신순 정렬 (데이터 없는 경우 대비 행 번호 우선)
+                finalFiltered.sort((a, b) => {
+                    if (a.orderTime && b.orderTime) {
+                        const timeA = new Date(a.orderTime).getTime();
+                        const timeB = new Date(b.orderTime).getTime();
+                        if(timeA !== timeB) return timeB - timeA;
+                    }
+                    return b.row - a.row; // 행 번호 역순 (가장 최신이 위로)
+                });
+            }
+
+            if(isVenueMode) {
+                 let vR = 0, vP = 0;
+                 const modelFiltered = baseFiltered.filter(item => {
+                    let rawModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim(); 
+                    return (currentModelFilter === 'all') || (rawModel.toUpperCase().includes(currentModelFilter));
+                 });
+                 modelFiltered.forEach(item => {
+                    let rawModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim(); 
+                    if(/\d$/.test(rawModel)) vP++; else vR++;
+                 });
+                 document.getElementById('btn-venue-rem').innerText = `남은 ${vR}`;
+                 document.getElementById('btn-venue-pick').innerText = `수령 ${vP}`;
+            }
+
+            renderList(finalFiltered); 
+        }
+
+        function updateModelButtonCounts(dataset) {
+            const counts = { '23U':0, '24U':0, '25U':0, '17P':0, '17PM':0, 'all': dataset.length, 'BACKUP':0, 'EXT':0 };
+            dataset.forEach(item => {
+                let model = (item.model || '').toUpperCase();
+                if(model.includes('23U')) counts['23U']++;
+                else if(model.includes('24U')) counts['24U']++;
+                else if(model.includes('25U')) counts['25U']++;
+                else if(model.includes('17P') && !model.includes('17PM')) counts['17P']++; 
+                else if(model.includes('17PM')) counts['17PM']++;
+                // [NEW] 백업/연장 카운트
+                if(model.includes('백업')) counts['BACKUP']++;
+                if(model.includes('연장')) counts['EXT']++;
+            });
+            document.querySelector('[data-model="all"]').innerText = `전체(${counts.all})`;
+            ['23U', '24U', '25U', '17P', '17PM'].forEach(m => {
+                const btn = document.querySelector(`[data-model="${m}"]`);
+                if(btn) btn.innerText = `${m}(${counts[m]})`;
+            });
+            // 백업/연장 버튼 업데이트
+            const backupBtn = document.querySelector('[data-model="백업"]');
+            if(backupBtn) backupBtn.innerText = `백업(${counts['BACKUP']})`;
+            const extBtn = document.querySelector('[data-model="연장"]');
+            if(extBtn) extBtn.innerText = `연장(${counts['EXT']})`;
+        }
+
+        function renderList(list) {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+            if(!list || list.length === 0) {
+                container.innerHTML = `<div class="py-20 text-center text-slate-400 text-xs font-medium">검색된 내역이 없습니다.</div>`;
+                return;
+            }
+
+            list.forEach(item => {
+                let badgeClass = 'status-wait', badgeText = '대기';
+                if(item.status === '예약신청') { badgeClass = 'status-badge status-wait'; badgeText = '신청'; }
+                else if(item.status === '확정') { badgeClass = 'status-badge status-confirm'; badgeText = '확정'; }
+                else if(item.status === '반납완료') { badgeClass = 'status-badge status-return'; badgeText = '반납'; }
+                else if(item.status === '취소') { badgeClass = 'status-badge status-cancel'; badgeText = '취소'; }
+
+                const truck = item.trackingNumber ? '<span class="ml-1 text-[10px]">🚚</span>' : '';
+                const memo = item.memo ? '<span class="ml-1 text-[10px] text-orange-500">📝</span>' : '';
+                let displayModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim();
+                let battery = item.model && item.model.includes('보조배터리') ? '<span class="text-amber-500 text-[10px] ml-0.5 font-bold">⚡</span>' : '';
+                const start = (item.startDate || '').substring(5).replace('-','.');
+                const end = (item.endDate || '').substring(5).replace('-','.');
+                const clean = t => (t||'').replace(/수령|반납/g, '').trim();
+                const method = `${clean(item.delivery)}➔${clean(item.returnWay)}`;
+                const time = formatTime(item.orderTime);
+
+                const card = document.createElement('div');
+                card.className = "card px-5 py-4 relative";
+                card.onclick = () => openModal(item);
+                
+                card.innerHTML = `
+                    <div class="absolute top-4 right-5 text-[10px] text-slate-600 font-black tracking-tight">${time}</div>
+                    <div class="flex justify-between items-end">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-[5px] font-extrabold text-[12px] border border-slate-200">${displayModel || '미정'}</span>
+                                <span class="status-badge ${badgeClass}">${badgeText}</span>
+                                <span class="text-[16px] font-black text-slate-900 truncate tracking-tight">${item.name}</span>
+                                ${battery}${memo}
+                            </div>
+                            <div class="flex items-center text-[11px] text-slate-400 font-medium gap-2 pl-0.5">
+                                <span class="font-mono font-bold">${item.phone ? item.phone.substring(item.phone.length-4) : ''}</span>
+                                <span class="w-[1px] h-2.5 bg-slate-200"></span>
+                                <span class="tracking-tighter opacity-90">${start}~${end}</span>
+                                <span class="w-[1px] h-2.5 bg-slate-200"></span>
+                                <span class="truncate text-slate-400 font-medium max-w-[120px]">${method}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0 pb-0.5">
+                            <div class="text-[11px]">${truck}</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 모달 제어
+        function openModal(item) {
+            const root = document.getElementById('modal-root');
+            document.getElementById('edit-row').value = item.row;
+            document.getElementById('display-order-time').innerText = "접수: " + (formatTime(item.orderTime, true) || '-');
+            document.getElementById('edit-name').value = item.name || '';
+            document.getElementById('edit-phone').value = item.phone || '';
+            document.getElementById('edit-start').value = item.startDate || '';
+            document.getElementById('edit-end').value = item.endDate || '';
+            document.getElementById('edit-delivery').value = item.delivery || '';
+            document.getElementById('edit-return-way').value = item.returnWay || '';
+            document.getElementById('btn-call').href = `tel:${item.phone}`;
+            document.getElementById('edit-tracking').value = item.trackingNumber || '';
+            document.getElementById('edit-memo').value = item.memo || '';
+
+            const hasBattery = (item.model || '').includes('보조배터리');
+            document.getElementById('edit-model').value = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim();
+            const batteryCheck = document.getElementById('edit-battery');
+            batteryCheck.checked = hasBattery;
+            updateBatteryStyle(hasBattery);
+
+            setEditStatus(item.status || '예약신청');
+
+            root.style.display = 'flex';
+            setTimeout(() => root.classList.add('active'), 10);
+            document.body.classList.add('modal-open');
+        }
+
+        function closeModal() {
+            const root = document.getElementById('modal-root');
+            root.classList.remove('active');
+            setTimeout(() => {
+                root.style.display = 'none';
+                document.body.classList.remove('modal-open');
+            }, 300);
+        }
+
+        function setEditStatus(status) {
+            document.getElementById('edit-status-val').value = status;
+            ['wait','confirm','return','cancel'].forEach(k => {
+                document.getElementById(`btn-status-${k}`).className = "status-btn py-3 rounded-lg text-[12px]";
+            });
+            const map = { '예약신청':'wait', '확정':'confirm', '반납완료':'return', '취소':'cancel' };
+            const key = map[status];
+            if(key) document.getElementById(`btn-status-${key}`).classList.add(`active-${key}`);
+        }
+
+        document.getElementById('edit-battery').onchange = function() { updateBatteryStyle(this.checked); };
+        function updateBatteryStyle(checked) {
+            const box = document.getElementById('battery-box');
+            if(checked) {
+                box.className = "w-full h-full border border-blue-500 rounded-xl flex flex-col items-center justify-center bg-blue-50 transition-all";
+            } else {
+                box.className = "w-full h-full border border-slate-200 rounded-xl flex flex-col items-center justify-center bg-white transition-all";
+            }
+        }
+
+        async function submitUpdate(e) {
+            e.preventDefault();
+            const btn = document.getElementById('save-btn');
+            const originalText = btn.innerText;
+            btn.innerText = '저장 중...'; btn.disabled = true;
+
+            let finalModel = document.getElementById('edit-model').value.trim();
+            if(document.getElementById('edit-battery').checked) finalModel += "+보조배터리";
+
+            const payload = {
+                type: 'update', row: document.getElementById('edit-row').value,
+                name: document.getElementById('edit-name').value, phone: document.getElementById('edit-phone').value,
+                startDate: document.getElementById('edit-start').value, endDate: document.getElementById('edit-end').value,
+                delivery: document.getElementById('edit-delivery').value, returnWay: document.getElementById('edit-return-way').value,
+                status: document.getElementById('edit-status-val').value, tracking: document.getElementById('edit-tracking').value,
+                model: finalModel, memo: document.getElementById('edit-memo').value
+            };
+
+            try {
+                const response = await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                showAlert("수정이 완료되었습니다.", "성공", "✅");
+                closeModal();
+                setTimeout(fetchData, 500);
+            } catch(err) {
+                showAlert("저장에 실패했습니다.", "오류", "❌");
+            } finally {
+                btn.innerText = originalText; btn.disabled = false;
+            }
+        }
+
+        function confirmDelete() {
+            showConfirm("이 예약을 정말 삭제할까요?", async () => {
+                const rowId = document.getElementById('edit-row').value;
+                try {
+                    await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'delete', row: rowId }) });
+                    showAlert("예약이 삭제되었습니다.", "완료", "🗑️");
+                    closeModal();
+                    setTimeout(fetchData, 500);
+                } catch(err) {
+                    showAlert("삭제 실패", "오류", "❌");
+                }
+            });
+        }
+
+        function formatTime(str, full = false) {
+            if(!str) return '';
+            const d = new Date(str);
+            if(isNaN(d)) return str;
+            const m = d.getMonth()+1, da = d.getDate(), h = d.getHours(), mi = String(d.getMinutes()).padStart(2,'0');
+            return full ? `${d.getFullYear()}.${m}.${da} ${h}:${mi}` : `${m}.${da} ${h}:${mi}`;
+        }
+
+        function initModelFilter() {
+           // 초기에는 아무것도 하지 않음 (버튼식으로 변경됨)
+        }
+
+        function applyFilters() { filterData(); } 
+
+        function showAlert(msg, title, icon) {
+            openAlertModal(title, msg, icon, `<button onclick="closeAlert()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-2xl text-[14px]">확인</button>`);
+        }
+        function showConfirm(msg, action) {
+            openAlertModal("확인", msg, "🤔", `
+                <button id="confirm-yes" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl text-[14px] mb-2">삭제하기</button>
+                <button onclick="closeAlert()" class="w-full bg-white text-slate-500 border border-slate-200 font-bold py-4 rounded-2xl text-[14px]">취소</button>
+            `);
+            document.getElementById('confirm-yes').onclick = () => { closeAlert(); action(); };
+        }
+        function openAlertModal(title, msg, icon, btns) {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-msg').innerText = msg;
+            document.getElementById('alert-icon').innerText = icon;
+            document.getElementById('alert-actions').innerHTML = btns;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+        function closeAlert() { document.getElementById('alert-modal').classList.add('hidden'); }
     </script>
 </body>
 </html>

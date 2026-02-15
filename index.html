@@ -40,14 +40,15 @@
         .card {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 20px; 
+            border-radius: 18px; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
             transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            display: flex; flex-direction: column;
         }
         .card:active { background-color: #F1F5F9; border-color: #CBD5E1; transform: scale(0.97); }
 
-        .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; line-height: 1; border: 1px solid transparent; }
+        .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; line-height: 1; border: 1px solid transparent; white-space: nowrap; }
         .status-wait { background-color: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
         .status-confirm { background-color: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
         .status-return { background-color: #F1F5F9; color: #475569; border-color: #E2E8F0; }
@@ -671,34 +672,38 @@
                 const clean = t => (t||'').replace(/수령|반납/g, '').trim();
                 const time = formatTime(item.orderTime);
                 const price = (parseInt(String(item.totalPrice||0).replace(/[^0-9]/g, '')) || 0).toLocaleString() + '원';
-                const phoneLast4 = item.phone ? item.phone : '';
+                const phoneLast4 = item.phone ? item.phone : ''; // 전체 연락처
 
                 const card = document.createElement('div');
-                card.className = "card px-5 py-4 relative flex flex-col gap-3"; 
+                card.className = "card px-5 py-4 relative flex flex-col gap-2"; 
                 card.onclick = () => openModal(item);
                 
-                // [수정] 박스 내부 최상단에 모델+배터리 배치
+                // [수정] 요청된 순서: 1.상태/시간 2.이름/연락처 3.정보박스 4.금액
                 card.innerHTML = `
                     <!-- 1열 (상태 / 시간) -->
-                    <div class="flex justify-between items-center mb-0.5">
-                        <span class="status-badge ${badgeClass}">${badgeText}</span>
-                        <span class="text-[10px] text-slate-400 font-medium">${time}</span>
+                    <div class="flex justify-between items-center mb-1">
+                         <div class="flex items-center gap-1.5">
+                             <span class="status-badge ${badgeClass}">${badgeText}</span>
+                         </div>
+                         <span class="text-[10px] text-slate-400 font-medium">${time}</span>
                     </div>
 
                     <!-- 2열 (이름 / 연락처) -->
-                    <div class="flex items-center gap-1.5 mb-1.5">
-                        <span class="text-[17px] font-black text-slate-900 truncate tracking-tight">${item.name}</span>
-                        <div class="flex items-center gap-1">
-                            <span class="text-[12px] text-slate-500 font-medium tracking-tight">${phoneLast4}</span>
-                            <button onclick="copyToClipboard('${phoneLast4}', event)" class="text-slate-300 hover:text-blue-500 transition-colors">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <div class="flex flex-col gap-0.5 mb-1.5">
+                         <div class="flex items-end gap-1.5">
+                            <span class="text-[17px] font-black text-slate-900 truncate tracking-tight">${item.name}</span>
+                        </div>
+                        <div class="flex items-center gap-1 pl-0.5">
+                            <span class="text-[12px] text-slate-500 font-medium tracking-tight font-mono">${phoneLast4}</span>
+                            <button onclick="copyToClipboard('${phoneLast4}', event)" class="text-slate-300 hover:text-blue-500 transition-colors p-0.5">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>
                         </div>
                     </div>
 
                     <!-- 정보 박스 -->
                     <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 flex flex-col gap-1.5">
-                         <!-- [수정] 모델 + 배터리 (최상단 배치) -->
+                         <!-- 모델 + 배터리 (최상단) -->
                          <div class="flex items-center gap-1 pb-1.5 border-b border-slate-200 border-dashed">
                              <span class="bg-white text-slate-700 px-2 py-0.5 rounded-[5px] font-extrabold text-[12px] border border-slate-200 shadow-sm truncate max-w-[120px]">${displayModel || '미정'}</span>
                              ${battery}${memo}

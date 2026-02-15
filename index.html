@@ -39,14 +39,14 @@
         
         .card {
             background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 18px; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            border-width: 2px;
+            border-style: solid;
+            border-radius: 24px; 
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
-            display: flex; flex-direction: column;
         }
-        .card:active { background-color: #F1F5F9; border-color: #CBD5E1; transform: scale(0.97); }
+        .card:active { background-color: #F1F5F9; transform: scale(0.98); }
 
         .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; line-height: 1; border: 1px solid transparent; white-space: nowrap; }
         .status-wait { background-color: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
@@ -72,13 +72,13 @@
         .center-modal {
             position: relative; width: 92%; max-width: 400px; 
             background-color: #FFFFFF;
-            border-radius: 24px; 
+            border-radius: 28px; 
             max-height: 90vh;
             display: flex; flex-direction: column; 
             transform: scale(0.95); opacity: 0;
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
             z-index: 210;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
         #modal-root.active .center-modal, #calendar-modal-root.active .center-modal { transform: scale(1); opacity: 1; }
 
@@ -177,7 +177,7 @@
             0% { opacity: 0; transform: translate(-50%, 20px); }
             100% { opacity: 1; transform: translate(-50%, 0); }
         }
-        .toast-msg { animation: fade-in-up 0.3s ease-out forwards; }
+        .toast-msg { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #191F28; color: white; padding: 12px 20px; border-radius: 50px; font-size: 13px; font-weight: 700; z-index: 1000; animation: fade-in-up 0.3s ease-out; }
     </style>
 </head>
 <body class="max-w-md mx-auto min-h-screen relative pb-safe">
@@ -185,20 +185,17 @@
     <!-- 1. 헤더 영역 -->
     <header class="sticky top-0 z-30 header-fixed pt-safe bg-white/95">
         <div class="px-4 pt-4 pb-1">
-            <!-- [ROW 1] 검색 / 달력 / 공연장 / 새로고침 -->
+            <!-- 검색 / 달력 / 공연장 / 새로고침 -->
             <div class="flex items-center gap-1.5 mb-2">
                 <div class="flex-1 relative header-input-box px-3 transition-all focus-within:bg-white focus-within:border-blue-400 shadow-sm">
                     <svg class="text-slate-400 mr-2 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                     <input type="text" id="search-input" onkeyup="filterData()" placeholder="이름/번호 검색" class="w-full bg-transparent border-none text-[13px] font-bold text-slate-900 placeholder-slate-400 outline-none p-0 h-full">
                 </div>
-                
                 <button onclick="openCalendar()" class="header-icon-btn shadow-sm relative">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     <div id="date-active-dot" class="hidden absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-blue-500 rounded-full border border-white"></div>
                 </button>
-                
                 <button id="venue-toggle" onclick="toggleVenueMode()" class="w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0">공연장</button>
-
                 <button onclick="fetchData()" class="header-icon-btn shadow-sm shrink-0">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                 </button>
@@ -209,25 +206,22 @@
                 <button onclick="clearDate(event)" class="text-blue-400 hover:text-blue-600 font-bold text-[10px] px-2 py-1 bg-white rounded-lg border border-blue-100">해제</button>
             </div>
 
-            <!-- [ROW 2] 카테고리 탭 -->
             <div class="flex border-b border-slate-100 relative pr-10">
                 <button onclick="switchTab('model')" id="tab-model" class="tab-btn active">📱 모델</button>
                 <button onclick="switchTab('service')" id="tab-service" class="tab-btn">🛠️ 서비스</button>
                 <button onclick="switchTab('delivery')" id="tab-delivery" class="tab-btn">📦 수령</button>
                 <button onclick="switchTab('return')" id="tab-return" class="tab-btn">↩️ 반납</button>
                 <button onclick="toggleCategorySection()" class="absolute right-0 top-0 bottom-0 w-10 flex items-center justify-center text-slate-400">
-                    <svg id="fold-arrow" class="fold-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                    <svg id="fold-arrow" class="fold-icon transition-transform" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
                 </button>
             </div>
             
-            <!-- [ROW 3] 필터 컨텐츠 -->
             <div id="category-section" class="pt-2 pb-1">
                 <div id="filter-group-model" class="flex gap-1.5 overflow-x-auto hide-scrollbar">
                     <button onclick="setModelFilter('all')" class="chip-btn model-filter-item active" data-model="all">전체</button>
                     <button onclick="setModelFilter('23U')" class="chip-btn model-filter-item" data-model="23U">23U</button>
                     <button onclick="setModelFilter('24U')" class="chip-btn model-filter-item" data-model="24U">24U</button>
                     <button onclick="setModelFilter('25U')" class="chip-btn model-filter-item" data-model="25U">25U</button>
-                    <button onclick="setModelFilter('26U')" class="chip-btn model-filter-item" data-model="26U">26U</button>
                     <button onclick="setModelFilter('17P')" class="chip-btn model-filter-item" data-model="17P">17P</button>
                     <button onclick="setModelFilter('17PM')" class="chip-btn model-filter-item" data-model="17PM">17PM</button>
                 </div>
@@ -241,42 +235,38 @@
                     <button onclick="setDeliveryFilter('택배')" class="chip-btn delivery-filter-item" data-delivery="택배">택배</button>
                     <button onclick="setDeliveryFilter('공연장')" class="chip-btn delivery-filter-item" data-delivery="공연장">공연장</button>
                     <button onclick="setDeliveryFilter('사무실')" class="chip-btn delivery-filter-item" data-delivery="사무실">사무실</button>
-                    <button onclick="setDeliveryFilter('퀵')" class="chip-btn delivery-filter-item" data-delivery="퀵">퀵</button>
                 </div>
                 <div id="filter-group-return" class="hidden gap-1.5 overflow-x-auto hide-scrollbar">
                     <button onclick="setReturnFilter('all')" class="chip-btn return-filter-item active" data-return="all">전체</button>
                     <button onclick="setReturnFilter('택배')" class="chip-btn return-filter-item" data-return="택배">택배</button>
                     <button onclick="setReturnFilter('당일')" class="chip-btn return-filter-item" data-return="당일">당일</button>
-                    <button onclick="setReturnFilter('공연장')" class="chip-btn return-filter-item" data-return="공연장">공연장</button>
                     <button onclick="setReturnFilter('사무실')" class="chip-btn return-filter-item" data-return="사무실">사무실</button>
                 </div>
             </div>
 
-            <!-- 공연장 모드 상세 필터 -->
             <div id="venue-filters" class="hidden border-t border-slate-100 pt-2 pb-1">
                 <div class="flex gap-1.5 w-full">
-                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn venue-active-btn active flex-1 text-[12px]" data-val="venue_remaining">남은 0</button>
-                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn venue-active-btn flex-1 text-[12px]" data-val="venue_pickedup">수령 0</button>
+                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn active flex-1 text-[12px]" data-val="venue_remaining">남은 0</button>
+                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn flex-1 text-[12px]" data-val="venue_pickedup">수령 0</button>
                 </div>
             </div>
         </div>
-        <input type="date" id="filter-date" class="hidden">
     </header>
 
     <!-- 2. 리스트 영역 -->
-    <main id="main-content" class="px-4 py-3 pb-32">
+    <main id="main-content" class="px-4 py-4 pb-32">
         <div id="loading" class="flex flex-col items-center justify-center py-24">
             <div class="w-9 h-9 border-4 border-slate-100 border-t-blue-500 rounded-full animate-spin mb-4"></div>
             <p class="text-[13px] font-bold text-slate-400">목록을 불러오는 중...</p>
         </div>
-        <div id="list-container" class="grid grid-cols-2 gap-2.5"></div>
+        <div id="list-container" class="grid grid-cols-2 gap-3"></div>
     </main>
 
     <!-- 3. 상세 정보 모달 (중앙 팝업) -->
     <div id="modal-root">
         <div class="modal-overlay" onclick="closeModal()"></div>
-        <div class="center-modal">
-            <div class="px-6 py-5 border-b border-slate-200 flex-none rounded-t-[24px] flex justify-between items-center shadow-sm bg-white">
+        <div class="center-modal shadow-2xl">
+            <div class="px-6 py-5 border-b border-slate-200 flex-none bg-white rounded-t-[28px] flex justify-between items-center">
                 <h2 class="text-[19px] font-black tracking-tight text-slate-900">예약 상세 내용</h2>
                 <button type="button" onclick="closeModal()" class="p-2 bg-slate-100 rounded-full text-slate-500 active:scale-90 transition-all">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -309,7 +299,7 @@
                         </div>
                     </div>
 
-                    <div class="form-section shadow-sm">
+                    <div class="form-section">
                         <div class="form-title">상태 및 기기 관리</div>
                         <div class="space-y-4">
                             <div>
@@ -323,27 +313,25 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="input-label">대여 모델</label>
+                                <label class="input-label">배정 기기</label>
                                 <div class="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1" id="edit-model-list">
                                     <button type="button" onclick="selectEditModel('23U')" class="model-select-chip" data-val="23U">23U</button>
                                     <button type="button" onclick="selectEditModel('24U')" class="model-select-chip" data-val="24U">24U</button>
                                     <button type="button" onclick="selectEditModel('25U')" class="model-select-chip" data-val="25U">25U</button>
-                                    <button type="button" onclick="selectEditModel('26U')" class="model-select-chip" data-val="26U">26U</button>
                                     <button type="button" onclick="selectEditModel('17P')" class="model-select-chip" data-val="17P">17P</button>
                                     <button type="button" onclick="selectEditModel('17PM')" class="model-select-chip" data-val="17PM">17PM</button>
-                                    <button type="button" onclick="selectEditModel('백업')" class="model-select-chip" data-val="백업">백업</button>
                                     <button type="button" onclick="selectEditModel('기타')" class="model-select-chip" data-val="기타">기타</button>
                                 </div>
                                 <input type="hidden" id="edit-model-type">
-                            </div>
-                            <div class="flex gap-3">
-                                <div class="flex-[2]"><label class="input-label">배정 기기 번호</label><input type="text" id="edit-device-id" placeholder="예: 12" class="input-field"></div>
-                                <div class="flex-1">
-                                    <label class="input-label">옵션</label>
-                                    <label class="checkbox-wrapper cursor-pointer block h-[46px]">
-                                        <input type="checkbox" id="edit-battery" class="hidden">
-                                        <div id="battery-box" class="w-full h-full border border-slate-200 rounded-xl flex items-center justify-center bg-white text-slate-400 transition-all font-bold text-xs">⚡ 배터리</div>
-                                    </label>
+                                <div class="flex gap-3 mt-3">
+                                    <div class="flex-[2]"><label class="input-label">기기 번호/상세</label><input type="text" id="edit-device-id" placeholder="예: 12" class="input-field"></div>
+                                    <div class="flex-1">
+                                        <label class="input-label">옵션</label>
+                                        <label class="checkbox-wrapper cursor-pointer block h-[46px]">
+                                            <input type="checkbox" id="edit-battery" class="hidden">
+                                            <div id="battery-box" class="w-full h-full border border-slate-200 rounded-xl flex items-center justify-center bg-white text-slate-400 transition-all font-bold text-xs">⚡ 배터리</div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                             <div><label class="input-label">송장번호</label><input type="text" id="edit-tracking" placeholder="숫자만 입력" inputmode="numeric" class="input-field font-mono"></div>
@@ -351,7 +339,7 @@
                         </div>
                     </div>
 
-                    <div class="form-section shadow-sm">
+                    <div class="form-section">
                         <div class="form-title">대여 일정 및 방식</div>
                         <div class="grid grid-cols-2 gap-3 mb-4">
                             <div><label class="input-label">수령일</label><input type="date" id="edit-start" class="input-field"></div>
@@ -364,7 +352,7 @@
                     </div>
                 </form>
             </div>
-            <div class="p-5 border-t border-slate-200 flex gap-3 rounded-b-[24px] bg-white">
+            <div class="p-5 border-t border-slate-200 flex gap-3 rounded-b-[28px] bg-white pb-10">
                 <button type="button" onclick="confirmDelete()" class="w-1/4 bg-red-50 text-red-600 font-bold py-4 rounded-2xl active:scale-95 text-sm transition-all">삭제</button>
                 <button type="button" onclick="submitUpdate(event)" id="save-btn" class="w-3/4 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-100 active:scale-95 text-base transition-all">수정 완료하기</button>
             </div>
@@ -374,16 +362,16 @@
     <!-- 캘린더 모달 (중앙 팝업) -->
     <div id="calendar-modal-root">
         <div class="modal-overlay" onclick="closeCalendar()"></div>
-        <div class="center-modal">
-            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center rounded-t-[24px] bg-white">
-                <h2 class="text-lg font-bold text-slate-800">수령일 선택</h2>
-                <button onclick="closeCalendar()" class="p-2 text-slate-400 transition-all"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        <div class="center-modal shadow-2xl">
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center rounded-t-[28px] bg-white">
+                <h2 class="text-lg font-bold text-slate-800">날짜 선택</h2>
+                <button onclick="closeCalendar()" class="p-2 text-slate-400 transition-all">✕</button>
             </div>
             <div class="p-5">
                 <div class="flex justify-between items-center mb-6 px-4">
-                    <button onclick="moveMonth(-1)" class="p-2 text-slate-500"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                    <button onclick="moveMonth(-1)" class="p-2 text-slate-500">◀</button>
                     <div id="cal-month-title" class="text-xl font-black text-slate-900"></div>
-                    <button onclick="moveMonth(1)" class="p-2 text-slate-500"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+                    <button onclick="moveMonth(1)" class="p-2 text-slate-500">▶</button>
                 </div>
                 <div class="grid grid-cols-7 text-center mb-3">
                     <div class="text-[11px] font-bold text-red-400">일</div>
@@ -399,52 +387,17 @@
         </div>
     </div>
 
-    <!-- 알림 모달 -->
-    <div id="alert-modal" class="fixed inset-0 z-[1000] hidden flex items-center justify-center px-8">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onclick="closeAlert()"></div>
-        <div class="bg-white rounded-[28px] p-7 w-full max-w-xs relative z-10 shadow-2xl text-center border border-slate-100">
-            <div id="alert-icon" class="text-4xl mb-4">🔔</div>
-            <h3 id="alert-title" class="text-lg font-black mb-1 text-slate-800">알림</h3>
-            <p id="alert-msg" class="text-slate-600 text-sm font-medium leading-relaxed mb-6"></p>
-            <div id="alert-actions" class="flex flex-col gap-2"></div>
-        </div>
-    </div>
-
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbx3s9Aa-z6j9MKdRUn-CJjLKW1JHmI12S5xb3-b9UIlACmY0Ag3ELEUA902pXwuN_oS5Q/exec"; 
-        const MODEL_LIST = ['23U', '24U', '25U', '26U', '17P', '17PM', '백업', '연장'];
+        const API_URL = "https://script.google.com/macros/s/AKfycbwI5I0-DixwuepqkZSm9SDYDYu6hzKH6QSs8L3LR6ZlBPJyk1O_M_uI6DUVkvOVNYvscQ/exec"; 
+        const MODEL_LIST = ['23U', '24U', '25U', '17P', '17PM'];
 
         let allData = [];
         let currentFilter = 'all';
-        let currentModelFilter = 'all';
-        let currentDeliveryFilter = 'all';
-        let currentReturnFilter = 'all';
         let isVenueMode = false;
         let selectedDate = null; 
         let calCurrentDate = new Date(); 
-        let isFilterVisible = true;
 
         window.onload = () => fetchData();
-
-        function switchTab(tabName) {
-            ['model', 'service', 'delivery', 'return'].forEach(t => {
-                const btn = document.getElementById('tab-' + t);
-                if(btn) {
-                    btn.classList.toggle('active', t === tabName);
-                    document.getElementById('filter-group-' + t).classList.toggle('hidden', t !== tabName);
-                    if (t === tabName) document.getElementById('filter-group-' + t).classList.add('flex');
-                }
-            });
-            if (!isFilterVisible) toggleCategorySection();
-        }
-
-        function toggleCategorySection() {
-            isFilterVisible = !isFilterVisible;
-            const section = document.getElementById('category-section');
-            const arrow = document.getElementById('fold-arrow');
-            if(section) section.classList.toggle('collapsed', !isFilterVisible);
-            if(arrow) arrow.classList.toggle('folded', !isFilterVisible);
-        }
 
         async function fetchData() {
             toggleLoading(true);
@@ -453,10 +406,9 @@
                 const json = await res.json();
                 if(json.result === 'success') {
                     allData = json.data;
-                    updateFilterCounts(allData); 
                     filterData();
-                } else { showAlert("데이터 로드 실패", "오류", "❌"); }
-            } catch(e) { showAlert("연결 실패", "네트워크 오류", "📡"); } 
+                } else { showToast("데이터 로드 실패"); }
+            } catch(e) { showToast("네트워크 오류"); } 
             finally { toggleLoading(false); }
         }
 
@@ -467,17 +419,146 @@
             else { if(loader) loader.classList.add('hidden'); }
         }
 
+        function renderList(list) {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+            if(!list.length) { container.innerHTML = `<div class="col-span-2 py-20 text-center text-slate-400 text-xs font-medium">결과가 없습니다.</div>`; return; }
+            
+            list.forEach(item => {
+                let borderColor = 'border-slate-200';
+                if(item.status === '예약신청') borderColor = 'border-blue-500';
+                else if(item.status === '확정') borderColor = 'border-emerald-500';
+                else if(item.status === '반납완료') borderColor = 'border-slate-300';
+                else if(item.status === '취소') borderColor = 'border-red-500';
+
+                let badgeClass = 'status-wait', badgeText = '신청';
+                if(item.status === '확정') { badgeClass = 'status-confirm'; badgeText = '확정'; }
+                else if(item.status === '반납완료') { badgeClass = 'status-return'; badgeText = '반납'; }
+                else if(item.status === '취소') { badgeClass = 'status-cancel'; badgeText = '취소'; }
+
+                const time = formatTime(item.orderTime);
+                const price = (parseInt(String(item.totalPrice||0).replace(/[^0-9]/g, '')) || 0).toLocaleString() + '원';
+                const start = (item.startDate || '').substring(5).replace('-','.');
+                const end = (item.endDate || '').substring(5).replace('-','.');
+                const clean = t => (t||'').replace(/수령|반납/g, '').trim();
+                const displayModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim();
+                const battery = (item.model || '').includes('보조배터리') ? '⚡' : '';
+                const truck = item.trackingNumber ? '🚚' : '';
+                const memo = item.memo ? '📝' : '';
+
+                const card = document.createElement('div');
+                card.className = `card px-5 py-6 relative flex flex-col gap-4 ${borderColor}`;
+                card.onclick = () => openModal(item);
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-0.5">
+                         <span class="text-[10px] text-slate-400 font-medium tracking-tight">${time}</span>
+                         <span class="text-[11px]">${memo}</span>
+                    </div>
+
+                    <div class="flex flex-col gap-0.5">
+                         <div class="flex items-center gap-1.5">
+                            <span class="status-badge ${badgeClass}">${badgeText}</span>
+                            <span class="text-[18px] font-black text-slate-900 truncate tracking-tight">${item.name}</span>
+                        </div>
+                        <div class="flex items-center gap-1 pl-0.5">
+                            <span class="text-[12px] text-slate-500 font-medium tracking-tight font-mono">${item.phone || ''}</span>
+                            <button onclick="copyToClipboard('${item.phone}', event)" class="text-slate-300 hover:text-blue-500 transition-colors p-0.5">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col gap-2 shadow-inner">
+                         <div class="flex items-center gap-1 pb-1.5 border-b border-slate-200 border-dashed">
+                             <span class="bg-white text-slate-700 px-2 py-0.5 rounded-[5px] font-extrabold text-[12px] border border-slate-200 shadow-sm truncate max-w-[120px]">📱 ${displayModel || '미정'}</span>
+                             ${battery}
+                         </div>
+                         <div class="text-[14px] font-extrabold text-slate-800 truncate leading-tight">${item.scheduleName || '-'}</div>
+                         <div class="flex items-center gap-1 text-[12px] font-bold text-slate-600 tracking-tight">
+                            <svg class="text-slate-400 w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span>${start} ~ ${end}</span>
+                         </div>
+                         <div class="flex items-center justify-between">
+                             <div class="flex items-center gap-1 text-[13px] font-extrabold text-blue-600">
+                                <svg class="text-blue-400 w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                                <span class="truncate max-w-[140px]">${clean(item.delivery)} ➔ ${clean(item.returnWay)}</span>
+                             </div>
+                             <span class="text-[12px]">${truck}</span>
+                         </div>
+                    </div>
+
+                    <div class="flex justify-end items-center mt-auto pt-1">
+                        <span class="text-[16px] font-black text-slate-900 tracking-tight">${price}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterData() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allData.filter(item => {
+                const matchQuery = (item.name && item.name.includes(query)) || (item.phone && item.phone.includes(query)) || (item.model && item.model.includes(query));
+                let matchDate = !selectedDate || (selectedDate === item.startDate);
+                let matchVenue = !isVenueMode || ((item.delivery || '').includes('공연') || (item.delivery || '').includes('현장'));
+                return matchQuery && matchDate && matchVenue;
+            });
+
+            if(isVenueMode) {
+                 let vR = 0, vP = 0;
+                 filtered.forEach(item => { if(/\d$/.test(item.model || '')) vP++; else vR++; });
+                 document.getElementById('btn-venue-rem').innerText = `남은 ${vR}`;
+                 document.getElementById('btn-venue-pick').innerText = `수령 ${vP}`;
+            }
+            
+            filtered.sort((a, b) => b.row - a.row);
+            renderList(filtered); 
+        }
+
+        function copyToClipboard(text, e) {
+            if(e) e.stopPropagation();
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast("연락처 복사 완료");
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-msg shadow-xl';
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        function switchTab(tabName) {
+            ['model', 'service', 'delivery', 'return'].forEach(t => {
+                document.getElementById('tab-' + t).classList.toggle('active', t === tabName);
+                document.getElementById('filter-group-' + t).classList.toggle('hidden', t !== tabName);
+            });
+        }
+
+        function toggleCategorySection() {
+            const section = document.getElementById('category-section');
+            const arrow = document.getElementById('fold-arrow');
+            const isCollapsed = section.classList.toggle('collapsed');
+            arrow.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
         function toggleVenueMode() {
             isVenueMode = !isVenueMode;
             const btn = document.getElementById('venue-toggle');
             const venueFilters = document.getElementById('venue-filters');
             if(isVenueMode) {
-                btn.className = "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0 whitespace-nowrap transition-all";
-                if(venueFilters) venueFilters.classList.remove('hidden');
-                setVenueFilter('venue_remaining'); 
+                btn.className = "w-[60px] h-[44px] rounded-xl text-[10px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0";
+                venueFilters.classList.remove('hidden');
             } else {
-                btn.className = "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0 whitespace-nowrap";
-                if(venueFilters) venueFilters.classList.add('hidden');
+                btn.className = "w-[60px] h-[44px] rounded-xl text-[10px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0";
+                venueFilters.classList.add('hidden');
             }
             filterData();
         }
@@ -489,253 +570,49 @@
         }
 
         function setModelFilter(model) {
-            currentModelFilter = model;
+            currentFilter = model;
             document.querySelectorAll('.model-filter-item').forEach(btn => btn.classList.toggle('active', btn.dataset.model === model));
             filterData();
         }
 
-        function setDeliveryFilter(val) {
-            currentDeliveryFilter = val;
-            document.querySelectorAll('.delivery-filter-item').forEach(btn => btn.classList.toggle('active', btn.dataset.delivery === val));
-            filterData();
-        }
-
-        function setReturnFilter(val) {
-            currentReturnFilter = val;
-            document.querySelectorAll('.return-filter-item').forEach(btn => btn.classList.toggle('active', btn.dataset.return === val));
-            filterData();
-        }
-
         function openCalendar() {
-            calCurrentDate = selectedDate ? new Date(selectedDate) : new Date();
             renderCalendar();
             const root = document.getElementById('calendar-modal-root');
-            if(root) { root.style.display = 'flex'; setTimeout(() => root.classList.add('active'), 10); }
+            root.style.display = 'flex';
+            setTimeout(() => root.classList.add('active'), 10);
             document.body.classList.add('modal-open');
         }
+
         function closeCalendar() {
             const root = document.getElementById('calendar-modal-root');
-            if(root) root.classList.remove('active');
-            setTimeout(() => { if(root) root.style.display = 'none'; document.body.classList.remove('modal-open'); }, 300);
+            root.classList.remove('active');
+            setTimeout(() => { root.style.display = 'none'; document.body.classList.remove('modal-open'); }, 300);
         }
+
         function moveMonth(step) { calCurrentDate.setMonth(calCurrentDate.getMonth() + step); renderCalendar(); }
+
         function renderCalendar() {
             const year = calCurrentDate.getFullYear();
             const month = calCurrentDate.getMonth();
-            const titleEl = document.getElementById('cal-month-title');
-            if(titleEl) titleEl.innerText = `${year}년 ${month + 1}월`;
+            document.getElementById('cal-month-title').innerText = `${year}년 ${month + 1}월`;
             const firstDay = new Date(year, month, 1).getDay();
             const lastDate = new Date(year, month + 1, 0).getDate();
             const grid = document.getElementById('cal-grid');
-            if(!grid) return;
             grid.innerHTML = '';
             for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
-            const todayStr = new Date().toISOString().split('T')[0];
             for(let d=1; d<=lastDate; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                let classes = "cal-day-cell cursor-pointer";
-                if(dateStr === todayStr) classes += " cal-day-today";
-                if(dateStr === selectedDate) classes += " cal-day-selected";
                 const div = document.createElement('div');
-                div.className = classes; div.innerText = d; div.onclick = () => selectDate(dateStr);
+                div.className = `py-3 text-sm font-bold rounded-xl cursor-pointer ${selectedDate === dateStr ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`;
+                div.innerText = d;
+                div.onclick = () => { selectedDate = dateStr; closeCalendar(); document.getElementById('date-active-dot').classList.remove('hidden'); filterData(); };
                 grid.appendChild(div);
             }
         }
-        function selectDate(dateStr) {
-            selectedDate = dateStr;
-            const [y,m,d] = dateStr.split('-');
-            document.getElementById('active-date-bar').classList.remove('hidden');
-            document.getElementById('active-date-text').innerText = `선택: ${parseInt(m)}월 ${parseInt(d)}일`;
-            document.getElementById('date-active-dot').classList.remove('hidden');
-            closeCalendar();
-            filterData();
-        }
-        function clearDate(e) {
-            if(e) e.stopPropagation();
-            selectedDate = null;
-            document.getElementById('active-date-bar').classList.add('hidden');
-            document.getElementById('date-active-dot').classList.add('hidden');
-            filterData();
-        }
 
-        function filterData() {
-            const query = document.getElementById('search-input').value.toLowerCase();
-            const baseFiltered = allData.filter(item => {
-                const matchQuery = (item.name && item.name.includes(query)) || (item.phone && item.phone.includes(query)) || (item.model && item.model.includes(query)) || (item.delivery && item.delivery.includes(query));
-                let matchDate = !selectedDate || (selectedDate === item.startDate);
-                let matchVenue = !isVenueMode || ((item.delivery || '').includes('공연') || (item.delivery || '').includes('현장'));
-                return matchQuery && matchDate && matchVenue;
-            });
+        function clearDate(e) { e.stopPropagation(); selectedDate = null; document.getElementById('date-active-dot').classList.add('hidden'); filterData(); }
 
-            updateFilterCounts(baseFiltered);
-
-            const finalFiltered = baseFiltered.filter(item => {
-                let rawModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim(); 
-                const matchModel = (currentModelFilter === 'all') || (rawModel.toUpperCase().includes(currentModelFilter));
-                const matchDelivery = (currentDeliveryFilter === 'all') || (item.delivery || '').includes(currentDeliveryFilter);
-                const matchReturn = (currentReturnFilter === 'all') || (item.returnWay || '').includes(currentReturnFilter);
-                if(isVenueMode) {
-                    const isAssigned = /\d$/.test(rawModel);
-                    if(currentFilter === 'venue_remaining' && isAssigned) return false;
-                    if(currentFilter === 'venue_pickedup' && !isAssigned) return false;
-                }
-                return matchModel && matchDelivery && matchReturn;
-            });
-
-            finalFiltered.sort((a, b) => (!a.orderTime || !b.orderTime) ? b.row - a.row : new Date(b.orderTime).getTime() - new Date(a.orderTime).getTime());
-
-            if(isVenueMode) {
-                 let vR = 0, vP = 0;
-                 baseFiltered.forEach(item => {
-                    let rawModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim();
-                    if (((currentModelFilter === 'all') || (rawModel.toUpperCase().includes(currentModelFilter))) && ((currentDeliveryFilter === 'all') || (item.delivery || '').includes(currentDeliveryFilter)) && ((currentReturnFilter === 'all') || (item.returnWay || '').includes(currentReturnFilter))) {
-                        if(/\d$/.test(rawModel)) vP++; else vR++;
-                    }
-                 });
-                 if(document.getElementById('btn-venue-rem')) document.getElementById('btn-venue-rem').innerText = `남은 ${vR}`;
-                 if(document.getElementById('btn-venue-pick')) document.getElementById('btn-venue-pick').innerText = `수령 ${vP}`;
-            }
-            renderList(finalFiltered); 
-        }
-
-        function updateFilterCounts(dataset) {
-            const mCounts = { '23U':0, '24U':0, '25U':0, '26U':0, '17P':0, '17PM':0, 'all': dataset.length, 'BACKUP':0, 'EXT':0 };
-            const dCounts = { 'all': dataset.length, '택배':0, '공연장':0, '사무실':0, '퀵':0 };
-            const rCounts = { 'all': dataset.length, '택배':0, '당일':0, '공연장':0, '사무실':0 };
-
-            dataset.forEach(item => {
-                let model = (item.model || '').toUpperCase();
-                if(model.includes('23U')) mCounts['23U']++;
-                else if(model.includes('24U')) mCounts['24U']++;
-                else if(model.includes('25U')) mCounts['25U']++;
-                else if(model.includes('26U')) mCounts['26U']++;
-                else if(model.includes('17P') && !model.includes('17PM')) mCounts['17P']++; 
-                else if(model.includes('17PM')) mCounts['17PM']++;
-                if(model.includes('백업')) mCounts['BACKUP']++;
-                if(model.includes('연장')) mCounts['EXT']++;
-
-                const del = item.delivery || '', ret = item.returnWay || '';
-                if(del.includes('택배')) dCounts['택배']++;
-                if(del.includes('공연') || del.includes('현장')) dCounts['공연장']++;
-                if(del.includes('사무실')) dCounts['사무실']++;
-                if(del.includes('퀵')) dCounts['퀵']++;
-                if(ret.includes('택배')) rCounts['택배']++;
-                if(ret.includes('당일')) rCounts['당일']++;
-                if(ret.includes('공연') || ret.includes('현장')) rCounts['공연장']++;
-                if(ret.includes('사무실')) rCounts['사무실']++;
-            });
-
-            const updateBtn = (selector, text) => { const el = document.querySelector(selector); if(el) el.innerText = text; };
-            updateBtn('[data-model="all"]', `전체(${mCounts.all})`);
-            ['23U', '24U', '25U', '26U', '17P', '17PM'].forEach(m => updateBtn(`[data-model="${m}"]`, `${m}(${mCounts[m]})`));
-            updateBtn('[data-model="백업"]', `백업(${mCounts['BACKUP']})`);
-            updateBtn('[data-model="연장"]', `연장(${mCounts['EXT']})`);
-            updateBtn('[data-delivery="all"]', `전체(${dCounts.all})`);
-            ['택배', '공연장', '사무실', '퀵'].forEach(k => updateBtn(`[data-delivery="${k}"]`, `${k}(${dCounts[k]})`));
-            updateBtn('[data-return="all"]', `전체(${rCounts.all})`);
-            ['택배', '당일', '공연장', '사무실'].forEach(k => updateBtn(`[data-return="${k}"]`, `${k}(${rCounts[k]})`));
-        }
-
-        function copyToClipboard(text, e) {
-            if(e) e.stopPropagation();
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg z-50 animate-fade-in-up';
-            toast.innerText = '연락처가 복사되었습니다';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
-        }
-
-        function renderList(list) {
-            const container = document.getElementById('list-container');
-            if(!container) return;
-            container.innerHTML = '';
-            if(!list.length) { container.innerHTML = `<div class="py-20 text-center text-slate-400 text-xs font-medium">결과가 없습니다.</div>`; return; }
-            list.forEach(item => {
-                let badgeClass = 'status-wait', badgeText = '신청';
-                if(item.status === '확정') { badgeClass = 'status-confirm'; badgeText = '확정'; }
-                else if(item.status === '반납완료') { badgeClass = 'status-return'; badgeText = '반납'; }
-                else if(item.status === '취소') { badgeClass = 'status-cancel'; badgeText = '취소'; }
-
-                const truck = item.trackingNumber ? '🚚' : '';
-                const memo = item.memo ? '<span class="ml-1 text-orange-500">📝</span>' : '';
-                let displayModel = (item.model || '').replace(/\s*\+?\s*보조배터리/g, '').trim();
-                let battery = (item.model || '').includes('보조배터리') ? '<span class="text-amber-500 text-[10px] ml-0.5 font-bold">⚡</span>' : '';
-                const start = (item.startDate || '').substring(5).replace('-','.');
-                const end = (item.endDate || '').substring(5).replace('-','.');
-                const clean = t => (t||'').replace(/수령|반납/g, '').trim();
-                const time = formatTime(item.orderTime);
-                const price = (parseInt(String(item.totalPrice||0).replace(/[^0-9]/g, '')) || 0).toLocaleString() + '원';
-                const phoneLast4 = item.phone ? item.phone : ''; // 전체 연락처
-
-                const card = document.createElement('div');
-                card.className = "card px-5 py-4 relative flex flex-col gap-2"; 
-                card.onclick = () => openModal(item);
-                
-                // [수정] 요청된 순서: 1.상태/시간 2.이름/연락처 3.정보박스 4.금액
-                card.innerHTML = `
-                    <!-- 1열 (상태 / 시간) -->
-                    <div class="flex justify-between items-center mb-1">
-                         <div class="flex items-center gap-1.5">
-                             <span class="status-badge ${badgeClass}">${badgeText}</span>
-                         </div>
-                         <span class="text-[10px] text-slate-400 font-medium">${time}</span>
-                    </div>
-
-                    <!-- 2열 (이름 / 연락처) -->
-                    <div class="flex flex-col gap-0.5 mb-1.5">
-                         <div class="flex items-end gap-1.5">
-                            <span class="text-[17px] font-black text-slate-900 truncate tracking-tight">${item.name}</span>
-                        </div>
-                        <div class="flex items-center gap-1 pl-0.5">
-                            <span class="text-[12px] text-slate-500 font-medium tracking-tight font-mono">${phoneLast4}</span>
-                            <button onclick="copyToClipboard('${phoneLast4}', event)" class="text-slate-300 hover:text-blue-500 transition-colors p-0.5">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- 정보 박스 -->
-                    <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 flex flex-col gap-1.5">
-                         <!-- 모델 + 배터리 (최상단) -->
-                         <div class="flex items-center gap-1 pb-1.5 border-b border-slate-200 border-dashed">
-                             <span class="bg-white text-slate-700 px-2 py-0.5 rounded-[5px] font-extrabold text-[12px] border border-slate-200 shadow-sm truncate max-w-[120px]">${displayModel || '미정'}</span>
-                             ${battery}${memo}
-                         </div>
-
-                         <!-- 일정명 -->
-                         <div class="text-[14px] font-extrabold text-slate-800 truncate leading-tight">${item.scheduleName || '-'}</div>
-                         
-                         <!-- 기간 -->
-                         <div class="flex items-center gap-1 text-[12px] font-bold text-slate-600 tracking-tight">
-                            <svg class="text-slate-400 w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            <span>${start} ~ ${end}</span>
-                         </div>
-
-                         <!-- 수령/반납 -->
-                         <div class="flex items-center justify-between">
-                             <div class="flex items-center gap-1 text-[13px] font-extrabold text-blue-600">
-                                 <svg class="text-blue-400 w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-                                <span class="truncate max-w-[140px]">${clean(item.delivery)} <span class="text-slate-400 text-[11px] font-normal mx-0.5">➔</span> ${clean(item.returnWay)}</span>
-                             </div>
-                             <span class="text-[12px]">${truck}</span>
-                         </div>
-                    </div>
-
-                    <!-- 금액 -->
-                    <div class="flex justify-end items-center mt-auto pt-1">
-                        <span class="text-[16px] font-black text-slate-900 tracking-tight">${price}</span>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+        function formatTime(str, full = false) { if(!str) return ''; const d = new Date(str); if(isNaN(d)) return str; const m = d.getMonth()+1, da = d.getDate(), h = d.getHours(), mi = String(d.getMinutes()).padStart(2,'0'); return full ? `${d.getFullYear()}.${m}.${da} ${h}:${mi}` : `${m}.${da} ${h}:${mi}`; }
 
         function selectEditModel(modelName) {
             document.getElementById('edit-model-type').value = modelName;
@@ -760,15 +637,21 @@
             let rawModel = item.model || '';
             const hasBattery = rawModel.includes('보조배터리');
             rawModel = rawModel.replace(/\+?\s*보조배터리/g, '').trim();
+            
             let matchedModel = '기타', deviceId = rawModel;
             for (const m of MODEL_LIST) { if (rawModel.toUpperCase().includes(m)) { matchedModel = m; deviceId = rawModel.replace(m, '').trim(); break; } }
+            
             selectEditModel(matchedModel);
             document.getElementById('edit-device-id').value = deviceId;
             document.getElementById('edit-battery').checked = hasBattery;
+            
             const box = document.getElementById('battery-box');
-            if(box) box.className = hasBattery ? "w-full h-full border border-blue-500 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600 transition-all font-black text-xs" : "w-full h-full border border-[var(--border)] rounded-xl flex items-center justify-center bg-[var(--card-bg)] text-slate-400 transition-all text-xs font-bold";
+            if(box) box.className = hasBattery ? "w-full h-full border border-blue-500 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600 transition-all font-black text-xs" : "w-full h-full border border-slate-200 rounded-xl flex items-center justify-center bg-white text-slate-400 transition-all font-bold text-xs";
+            
             setEditStatus(item.status || '예약신청');
-            if(root) { root.style.display = 'flex'; setTimeout(() => root.classList.add('active'), 10); }
+            
+            root.style.display = 'flex';
+            setTimeout(() => root.classList.add('active'), 10);
             document.body.classList.add('modal-open');
         }
 
@@ -782,10 +665,7 @@
             document.getElementById('edit-status-val').value = status;
             ['wait','confirm','return','cancel'].forEach(k => {
                 const btn = document.getElementById(`btn-status-${k}`);
-                if(btn) {
-                    btn.className = "status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all";
-                    btn.style = ""; 
-                }
+                if(btn) btn.className = "status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400";
             });
             const map = { '예약신청':'wait', '확정':'confirm', '반납완료':'return', '취소':'cancel' };
             const activeKey = map[status];
@@ -800,54 +680,34 @@
 
         document.getElementById('edit-battery').onchange = function() {
             const box = document.getElementById('battery-box');
-            if(box) box.className = this.checked ? "w-full h-full border border-blue-500 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600 transition-all font-black text-xs" : "w-full h-full border border-slate-200 rounded-xl flex items-center justify-center bg-white text-slate-400 transition-all text-xs font-bold";
+            if(box) box.className = this.checked ? "w-full h-full border border-blue-500 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600 transition-all font-black text-xs" : "w-full h-full border border-slate-200 rounded-xl flex items-center justify-center bg-white text-slate-400 transition-all font-bold text-xs";
         };
 
         async function submitUpdate(e) {
             if(e) e.preventDefault();
             const btn = document.getElementById('save-btn');
-            const originalText = btn.innerText;
             btn.innerText = '저장 중...'; btn.disabled = true;
 
             const modelType = document.getElementById('edit-model-type').value;
             const deviceId = document.getElementById('edit-device-id').value.trim();
             let finalModel = (modelType === '기타' ? deviceId : modelType + deviceId) + (document.getElementById('edit-battery').checked ? "+보조배터리" : "");
             
-            const priceVal = document.getElementById('edit-price').value.replace(/[^0-9]/g, '');
-
             const payload = {
                 type: 'update', row: document.getElementById('edit-row').value, name: document.getElementById('edit-name').value, phone: document.getElementById('edit-phone').value,
                 startDate: document.getElementById('edit-start').value, endDate: document.getElementById('edit-end').value, delivery: document.getElementById('edit-delivery').value, 
                 returnWay: document.getElementById('edit-return-way').value, status: document.getElementById('edit-status-val').value, tracking: document.getElementById('edit-tracking').value,
-                model: finalModel, memo: document.getElementById('edit-memo').value, totalPrice: priceVal 
+                model: finalModel, memo: document.getElementById('edit-memo').value, totalPrice: document.getElementById('edit-price').value
             };
-            try { await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); showAlert("정보를 수정했어요.", "완료", "✅"); closeModal(); setTimeout(fetchData, 500); } 
-            catch(err) { showAlert("저장에 실패했습니다.", "오류", "❌"); } finally { btn.innerText = originalText; btn.disabled = false; }
+            try { await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); showToast("정보가 수정되었습니다."); closeModal(); fetchData(); } 
+            catch(err) { showToast("저장 실패"); } finally { btn.innerText = '수정 완료하기'; btn.disabled = false; }
         }
 
         function confirmDelete() {
-            showConfirm("이 예약을 정말 삭제할까요?", async () => {
-                try { await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'delete', row: document.getElementById('edit-row').value }) }); showAlert("예약이 삭제되었습니다.", "완료", "🗑️"); closeModal(); setTimeout(fetchData, 500); } 
-                catch(err) { showAlert("삭제 실패", "오류", "❌"); }
-            });
-        }
-
-        function formatTime(str, full = false) { if(!str) return ''; const d = new Date(str); if(isNaN(d)) return str; const m = d.getMonth()+1, da = d.getDate(), h = d.getHours(), mi = String(d.getMinutes()).padStart(2,'0'); return full ? `${d.getFullYear()}.${m}.${da} ${h}:${mi}` : `${m}.${da} ${h}:${mi}`; }
-        function showAlert(msg, title, icon) { openAlertModal(title, msg, icon, `<button onclick="closeAlert()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-2xl text-base">확인</button>`); }
-        function showConfirm(msg, action) { openAlertModal("확인", msg, "🤔", `<button id="confirm-yes" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl text-base mb-2">삭제하기</button><button onclick="closeAlert()" class="w-full bg-white text-slate-500 border border-slate-200 font-bold py-4 rounded-2xl text-base">취소</button>`); document.getElementById('confirm-yes').onclick = () => { closeAlert(); action(); }; }
-        function openAlertModal(title, msg, icon, btns) { document.getElementById('alert-title').innerText = title; document.getElementById('alert-msg').innerText = msg; document.getElementById('alert-icon').innerText = icon; document.getElementById('alert-actions').innerHTML = btns; document.getElementById('alert-modal').classList.remove('hidden'); }
-        function closeAlert() { document.getElementById('alert-modal').classList.add('hidden'); }
-        
-        // [NEW] 토스트 애니메이션 추가
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @keyframes fade-in-up {
-                0% { opacity: 0; transform: translate(-50%, 20px); }
-                100% { opacity: 1; transform: translate(-50%, 0); }
+            if(confirm("이 예약을 정말 삭제할까요?")) {
+                fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'delete', row: document.getElementById('edit-row').value }) })
+                .then(() => { showToast("예약이 삭제되었습니다."); closeModal(); fetchData(); });
             }
-            .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
-        `;
-        document.head.appendChild(style);
+        }
     </script>
 </body>
 </html>

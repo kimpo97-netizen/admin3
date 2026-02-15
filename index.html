@@ -214,7 +214,7 @@
         <div id="list-container" class="grid grid-cols-2 gap-3"></div>
     </main>
 
-    <!-- 3. 상세 정보 모달 -->
+    <!-- 3. 상세 정보 모달 (중앙 팝업) -->
     <div id="modal-root">
         <div class="modal-overlay" onclick="closeModal()"></div>
         <div class="center-modal shadow-2xl">
@@ -307,7 +307,7 @@
         </div>
     </div>
 
-    <!-- 캘린더 모달 -->
+    <!-- 캘린더 모달 (중앙 팝업) -->
     <div id="calendar-modal-root">
         <div class="modal-overlay" onclick="closeCalendar()"></div>
         <div class="center-modal shadow-2xl bg-white">
@@ -337,7 +337,8 @@
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbx3s9Aa-z6j9MKdRUn-CJjLKW1JHmI12S5xb3-b9UIlACmY0Ag3ELEUA902pXwuN_oS5Q/exec"; 
-        
+        const MODEL_LIST = ['23U', '24U', '25U', '17P', '17PM'];
+
         let allData = [];
         let currentFilterStatus = 'all';
         let currentModelFilter = 'all';
@@ -438,6 +439,8 @@
             });
 
             updateFilterUI(counts);
+            // 요청된 오래된 순 정렬 (a.row - b.row)
+            filtered.sort((a, b) => a.row - b.row);
             renderList(filtered); 
         }
 
@@ -501,9 +504,9 @@
                             <span>${memo}</span>
                         </div>
                         <div class="flex items-center gap-1 mt-1 pl-0.5">
-                            <span class="text-[12px] text-slate-500 font-mono">${item.phone || ''}</span>
-                            <button onclick="copyToClipboard('${item.phone}', event)" class="p-1 bg-slate-50 rounded text-slate-300 active:scale-75">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span class="text-[12px] text-slate-500 font-mono font-bold">${item.phone || ''}</span>
+                            <button onclick="copyToClipboard('${item.phone}', event)" class="p-1 bg-transparent rounded text-slate-300 active:scale-75">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>
                         </div>
                     </div>
@@ -513,7 +516,7 @@
                              ${battery}
                          </div>
                          <div class="text-[14px] font-extrabold text-slate-800 truncate leading-tight">${item.scheduleName || '-'}</div>
-                         <div class="flex items-center gap-2 text-[12px] font-bold text-slate-600">
+                         <div class="flex items-center gap-2 text-[13px] font-bold text-slate-600">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             <span>${start} ~ ${end}</span>
                          </div>
@@ -572,7 +575,9 @@
             document.getElementById('edit-return-way').value = item.returnWay || '';
             document.getElementById('edit-tracking').value = item.trackingNumber || '';
             document.getElementById('edit-memo').value = item.memo || '';
-            document.getElementById('edit-price').value = (item.totalPrice || 0);
+            
+            const priceField = document.getElementById('edit-price');
+            if(priceField) priceField.value = (item.totalPrice || 0);
 
             let rawModel = item.model || '';
             const hasBattery = rawModel.includes('보조배터리');
@@ -692,7 +697,7 @@
             const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate(), grid = document.getElementById('cal-grid');
             if(!grid) return;
             grid.innerHTML = ''; for(let i=0; i<first; i++) grid.innerHTML += '<div></div>';
-            for(let d=1; d<=last; d++) {
+            for(let d=1; d<=lastDate; d++) {
                 const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const div = document.createElement('div'); div.className = `py-3 text-sm font-bold rounded-xl cursor-pointer ${selectedDate === ds ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`;
                 div.innerText = d; div.onclick = () => { selectedDate = ds; closeCalendar(); document.getElementById('active-date-bar').classList.remove('hidden'); document.getElementById('active-date-text').innerText = `선택: ${m+1}월 ${d}일`; document.getElementById('date-active-dot').classList.remove('hidden'); filterData(); };

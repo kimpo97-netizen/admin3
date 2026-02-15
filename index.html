@@ -109,8 +109,8 @@
             justify-content: center;
             height: 34px;
         }
-        .chip-btn.active { background: #1E293B; color: white; border-color: #1E293B; }
-        .venue-active-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .chip-btn.active { background: #1E293B !important; color: white !important; border-color: #1E293B !important; }
+        .venue-active-btn.active { background: #1E293B !important; color: white !important; border-color: #1E293B !important; }
 
         .header-icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid #E2E8F0; border-radius: 14px; color: #64748B; transition: all 0.1s; }
         .header-icon-btn:active { background: #F1F5F9; transform: scale(0.95); }
@@ -125,6 +125,20 @@
         .model-select-chip.active { background: #1E293B; color: white; border-color: #1E293B; }
         
         .header-input-box { height: 44px; display: flex; align-items: center; background: white; border: 1px solid #E2E8F0; border-radius: 14px; transition: all 0.2s; }
+
+        /* 캘린더 전용 스타일 */
+        .cal-header-grid, .cal-body-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+        .cal-day-cell { 
+            aspect-ratio: 1/1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 14px; 
+            font-weight: 600; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            transition: all 0.1s; 
+        }
 
         @keyframes fade-in-up {
             0% { opacity: 0; transform: translate(-50%, 20px); }
@@ -198,8 +212,8 @@
 
             <div id="venue-filters" class="hidden border-t border-slate-100 pt-2 pb-1">
                 <div class="flex gap-1.5 w-full">
-                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn active flex-1 text-[12px]" data-val="venue_remaining">남은 0</button>
-                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn flex-1 text-[12px]" data-val="venue_pickedup">수령 0</button>
+                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn venue-active-btn active flex-1 text-[12px]" data-val="venue_remaining">남은 0</button>
+                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn venue-active-btn flex-1 text-[12px]" data-val="venue_pickedup">수령 0</button>
                 </div>
             </div>
         </div>
@@ -317,11 +331,11 @@
             </div>
             <div class="p-5">
                 <div class="flex justify-between items-center mb-6 px-4">
-                    <button onclick="moveMonth(-1)" class="p-2 text-slate-500">◀</button>
+                    <button onclick="moveMonth(-1)" class="p-2 text-slate-500 active:scale-75 transition-all">◀</button>
                     <div id="cal-month-title" class="text-lg font-black text-slate-900"></div>
-                    <button onclick="moveMonth(1)" class="p-2 text-slate-500">▶</button>
+                    <button onclick="moveMonth(1)" class="p-2 text-slate-500 active:scale-75 transition-all">▶</button>
                 </div>
-                <div class="grid grid-cols-7 text-center mb-3">
+                <div class="cal-header-grid mb-3">
                     <div class="text-[11px] font-bold text-red-400">일</div>
                     <div class="text-[11px] font-bold text-slate-400">월</div>
                     <div class="text-[11px] font-bold text-slate-400">화</div>
@@ -330,7 +344,7 @@
                     <div class="text-[11px] font-bold text-slate-400">금</div>
                     <div class="text-[11px] font-bold text-blue-400">토</div>
                 </div>
-                <div id="cal-grid" class="grid grid-cols-7 gap-y-1"></div>
+                <div id="cal-grid" class="cal-body-grid gap-y-1"></div>
             </div>
         </div>
     </div>
@@ -393,7 +407,7 @@
                 const matchQuery = name.includes(query) || phone.includes(query) || model.includes(query);
                 let matchDate = !selectedDate || (selectedDate === item.startDate);
                 
-                // 수량 집계
+                // 수량 집계 (필터 무관 전체 집계)
                 if (matchDate) {
                     counts.model.all++;
                     if (model.includes('23U')) counts.model['23U']++;
@@ -439,8 +453,8 @@
             });
 
             updateFilterUI(counts);
-            // 요청된 오래된 순 정렬 (a.row - b.row)
-            filtered.sort((a, b) => a.row - b.row);
+            // 최신순 정렬 (Row 번호 기준 내림차순)
+            filtered.sort((a, b) => b.row - a.row);
             renderList(filtered); 
         }
 
@@ -492,11 +506,13 @@
                 const memo = item.memo ? '📝' : '';
 
                 const card = document.createElement('div');
-                card.className = `card px-4 py-6 relative flex flex-col gap-4 ${borderColor}`;
+                card.className = `card px-4 pt-2 pb-4 relative flex flex-col gap-1.5 ${borderColor}`;
                 card.onclick = () => openModal(item);
                 
                 card.innerHTML = `
-                    <div class="flex justify-end"><span class="text-[10px] text-slate-400 font-medium">${time}</span></div>
+                    <div class="flex justify-end text-right">
+                         <span class="text-[9px] leading-tight text-slate-400 font-medium">${time}</span>
+                    </div>
                     <div class="flex flex-col gap-0.5">
                          <div class="flex items-center gap-1.5">
                             <span class="status-badge ${badgeClass}">${badgeText}</span>
@@ -516,13 +532,13 @@
                              ${battery}
                          </div>
                          <div class="text-[14px] font-extrabold text-slate-800 truncate leading-tight">${item.scheduleName || '-'}</div>
-                         <div class="flex items-center gap-2 text-[13px] font-bold text-slate-600">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                         <div class="flex items-center gap-2 text-[13px] font-black text-slate-700">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             <span>${start} ~ ${end}</span>
                          </div>
                          <div class="flex justify-between items-center pt-1.5 border-t border-slate-100 border-dashed">
                              <div class="flex items-center gap-1 text-[13px] font-extrabold text-blue-600">
-                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                                  <span>${clean(item.delivery)} ➔ ${clean(item.returnWay)}</span>
                              </div>
                              <span class="text-[12px]">${truck}</span>
@@ -537,10 +553,57 @@
             });
         }
 
+        function formatTime(str) {
+            if(!str) return '';
+            const s = String(str);
+            const result = s.replace(/(\d{1,2}\.?)\s+(오전|오후|\d{1,2}:)/, '$1<br>$2');
+            if (result === s) {
+                const d = new Date(str);
+                if(!isNaN(d.getTime())) {
+                    const datePart = `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
+                    const timePart = d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true });
+                    return `${datePart}<br>${timePart}`;
+                }
+            }
+            return result;
+        }
+
+        function toggleVenueMode() {
+            isVenueMode = !isVenueMode;
+            const btn = document.getElementById('venue-toggle');
+            const venueFilters = document.getElementById('venue-filters');
+            
+            // 공연장 모드 버튼 UI
+            btn.className = isVenueMode ? 
+                "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0" : 
+                "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0";
+            
+            if(venueFilters) venueFilters.classList.toggle('hidden', !isVenueMode);
+
+            // 중요: 모드 전환 시 필터 상태 초기화하여 정보 증발 방지
+            if (!isVenueMode) {
+                currentFilterStatus = 'all';
+                document.querySelectorAll('.venue-active-btn').forEach(b => b.classList.remove('active'));
+            } else {
+                currentFilterStatus = 'venue_remaining';
+                document.getElementById('btn-venue-rem').classList.add('active');
+                document.getElementById('btn-venue-pick').classList.remove('active');
+            }
+            
+            filterData();
+        }
+
+        function setVenueFilter(v) { 
+            currentFilterStatus = v; 
+            document.querySelectorAll('.venue-active-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-val') === v);
+            });
+            filterData(); 
+        }
+
         function setEditStatus(status) {
             const statusInput = document.getElementById('edit-status-val');
             if (statusInput) statusInput.value = status;
-
             ['wait','confirm','return','cancel'].forEach(k => {
                 const btn = document.getElementById(`btn-status-${k}`);
                 if(btn) {
@@ -548,11 +611,9 @@
                     btn.style = ""; 
                 }
             });
-
             const map = { '예약신청':'wait', '확정':'confirm', '반납완료':'return', '취소':'cancel' };
             const activeKey = map[status];
             const activeBtn = document.getElementById(`btn-status-${activeKey}`);
-            
             if(activeBtn) {
                 if(status === '예약신청') { activeBtn.style.backgroundColor = '#FFF7ED'; activeBtn.style.color = '#C2410C'; activeBtn.style.borderColor = '#FDBA74'; }
                 else if(status === '확정') { activeBtn.style.backgroundColor = '#0064FF'; activeBtn.style.color = 'white'; activeBtn.style.borderColor = '#0064FF'; }
@@ -564,9 +625,8 @@
         function openModal(item) {
             const root = document.getElementById('modal-root');
             if(!root) return;
-
             document.getElementById('edit-row').value = item.row;
-            document.getElementById('display-order-time').innerText = "접수: " + (formatTime(item.orderTime, true) || '-');
+            document.getElementById('display-order-time').innerText = "접수: " + (formatTime(item.orderTime).replace('<br>', ' ') || '-');
             document.getElementById('edit-name').value = item.name || '';
             document.getElementById('edit-phone').value = item.phone || '';
             document.getElementById('edit-start').value = item.startDate || '';
@@ -575,24 +635,19 @@
             document.getElementById('edit-return-way').value = item.returnWay || '';
             document.getElementById('edit-tracking').value = item.trackingNumber || '';
             document.getElementById('edit-memo').value = item.memo || '';
-            
             const priceField = document.getElementById('edit-price');
             if(priceField) priceField.value = (item.totalPrice || 0);
-
             let rawModel = item.model || '';
             const hasBattery = rawModel.includes('보조배터리');
             rawModel = rawModel.replace(/\+?\s*보조배터리/g, '').trim();
-            
             let matchedModel = '기타', deviceId = rawModel;
             const models = ['23U', '24U', '25U', '17P', '17PM'];
             for (const m of models) { if (rawModel.toUpperCase().includes(m)) { matchedModel = m; deviceId = rawModel.replace(new RegExp(m, 'i'), '').trim(); break; } }
-            
             selectEditModel(matchedModel);
             document.getElementById('edit-device-id').value = deviceId;
             document.getElementById('edit-battery').checked = hasBattery;
             updateBatteryUI(hasBattery);
             setEditStatus(item.status || '예약신청');
-            
             root.style.display = 'flex';
             setTimeout(() => root.classList.add('active'), 10);
             document.body.classList.add('modal-open');
@@ -619,11 +674,9 @@
             if(e) e.preventDefault();
             const btn = document.getElementById('save-btn');
             btn.innerText = '저장 중...'; btn.disabled = true;
-
             const modelType = document.getElementById('edit-model-type').value;
             const deviceId = document.getElementById('edit-device-id').value.trim();
             let finalModel = (modelType === '기타' ? deviceId : modelType + deviceId) + (document.getElementById('edit-battery').checked ? "+보조배터리" : "");
-            
             const payload = {
                 type: 'update', row: document.getElementById('edit-row').value, name: document.getElementById('edit-name').value, phone: document.getElementById('edit-phone').value,
                 startDate: document.getElementById('edit-start').value, endDate: document.getElementById('edit-end').value, delivery: document.getElementById('edit-delivery').value, 
@@ -672,16 +725,6 @@
         function setDeliveryFilter(d) { currentDeliveryFilter = d; document.querySelectorAll('.delivery-filter-item').forEach(b => b.classList.toggle('active', b.dataset.id === d)); filterData(); }
         function setReturnFilter(r) { currentReturnFilter = r; document.querySelectorAll('.return-filter-item').forEach(b => b.classList.toggle('active', b.dataset.id === r)); filterData(); }
 
-        function toggleVenueMode() {
-            isVenueMode = !isVenueMode;
-            const btn = document.getElementById('venue-toggle');
-            const venueFilters = document.getElementById('venue-filters');
-            btn.className = isVenueMode ? "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0" : "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0";
-            if(venueFilters) venueFilters.classList.toggle('hidden', !isVenueMode);
-            filterData();
-        }
-        function setVenueFilter(v) { currentFilterStatus = v; document.querySelectorAll('.venue-active-btn').forEach(b => b.classList.toggle('active', b.dataset.val === v)); filterData(); }
-
         function openCalendar() {
             renderCalendar();
             const root = document.getElementById('calendar-modal-root');
@@ -697,15 +740,15 @@
             const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate(), grid = document.getElementById('cal-grid');
             if(!grid) return;
             grid.innerHTML = ''; for(let i=0; i<first; i++) grid.innerHTML += '<div></div>';
-            for(let d=1; d<=lastDate; d++) {
+            for(let d=1; d<=last; d++) {
                 const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const div = document.createElement('div'); div.className = `py-3 text-sm font-bold rounded-xl cursor-pointer ${selectedDate === ds ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`;
+                const div = document.createElement('div'); 
+                div.className = `cal-day-cell ${selectedDate === ds ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`;
                 div.innerText = d; div.onclick = () => { selectedDate = ds; closeCalendar(); document.getElementById('active-date-bar').classList.remove('hidden'); document.getElementById('active-date-text').innerText = `선택: ${m+1}월 ${d}일`; document.getElementById('date-active-dot').classList.remove('hidden'); filterData(); };
                 grid.appendChild(div);
             }
         }
         function clearDate(e) { e.stopPropagation(); selectedDate = null; document.getElementById('active-date-bar').classList.add('hidden'); document.getElementById('date-active-dot').classList.add('hidden'); filterData(); }
-        function formatTime(str, full = false) { if(!str) return ''; const d = new Date(str); if(isNaN(d)) return str; const m = d.getMonth()+1, da = d.getDate(), h = d.getHours(), mi = String(d.getMinutes()).padStart(2,'0'); return full ? `${d.getFullYear()}.${m}.${da} ${h}:${mi}` : `${m}.${da} ${h}:${mi}`; }
     </script>
 </body>
 </html>

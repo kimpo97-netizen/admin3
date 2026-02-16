@@ -59,7 +59,6 @@
             border-bottom: 1px solid var(--border);
         }
 
-        /* 모달 시스템 */
         #modal-root, #calendar-modal-root { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 200; 
             display: none; justify-content: center; align-items: center; 
@@ -117,20 +116,8 @@
         .tab-btn { flex: 1; padding: 12px 0; font-size: 13px; font-weight: 700; color: #94A3B8; border-bottom: 2px solid transparent; transition: all 0.2s; text-align: center; }
         .tab-btn.active { color: #1E293B; border-bottom-color: #1E293B; }
 
-        /* [수정] 필터 영역 애니메이션: 패딩까지 완전히 사라지도록 설정 */
-        #category-section {
-            overflow: hidden;
-            transition: all 0.3s ease-out; /* 높이, 패딩, 투명도 모두 애니메이션 */
-            max-height: 250px;
-            opacity: 1;
-        }
-        #category-section.collapsed {
-            max-height: 0;
-            opacity: 0;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            margin: 0 !important;
-        }
+        #category-section { overflow: hidden; transition: all 0.3s ease-out; max-height: 250px; opacity: 1; }
+        #category-section.collapsed { max-height: 0; opacity: 0; padding-top: 0 !important; padding-bottom: 0 !important; margin: 0 !important; }
 
         .model-select-chip, .method-chip { padding: 8px 12px; border-radius: 10px; border: 1px solid #E2E8F0; background: white; color: #64748B; font-size: 12px; font-weight: 700; transition: all 0.2s; flex-shrink: 0; }
         .model-select-chip.active, .method-chip.active { background: #1E293B; color: white; border-color: #1E293B; }
@@ -164,34 +151,9 @@
     <!-- 1. 헤더 영역 -->
     <header class="sticky top-0 z-30 header-fixed pt-safe bg-white/95">
         <div class="px-4 pt-3 pb-1">
-            <!-- 검색바 영역 -->
-            <div class="flex items-center gap-1.5 mb-2">
-                <div class="flex-1 relative header-input-box px-3 shadow-sm focus-within:ring-1 focus-within:ring-blue-400">
-                    <svg class="text-slate-400 mr-2 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    <input type="text" id="search-input" onkeyup="filterData()" placeholder="이름/연락처 검색" class="w-full bg-transparent border-none text-[12px] font-bold text-slate-900 placeholder-slate-400 outline-none p-0 h-full">
-                </div>
-                <button onclick="openCalendar()" class="header-icon-btn shadow-sm relative active:scale-95 transition-all">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    <div id="date-active-dot" class="hidden absolute top-2 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full border border-white"></div>
-                </button>
-                <button id="venue-toggle" onclick="toggleVenueMode()" class="w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0 active:scale-95 transition-all">공연장</button>
-                <button onclick="fetchData()" class="header-icon-btn shadow-sm shrink-0 active:scale-95 transition-all">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-                </button>
-            </div>
-
-            <!-- 이번주 택배 / 사무실 퀵 필터 -->
-            <div class="flex gap-1.5 mb-2 overflow-x-auto hide-scrollbar">
-                <button onclick="setSpecialFilter('this_week_parcel')" id="btn-quick-this-week" class="chip-btn flex items-center gap-1.5 active:scale-95 !rounded-full px-4 border-slate-300 flex-shrink-0">
-                    📦 이번주 택배 <span id="count-this-week-parcel" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1">0</span>
-                </button>
-                <button onclick="setSpecialFilter('this_week_office')" id="btn-quick-this-week-office" class="chip-btn flex items-center gap-1.5 active:scale-95 !rounded-full px-4 border-slate-300 flex-shrink-0">
-                    🏢 이번주 사무실 <span id="count-this-week-office" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1">0</span>
-                </button>
-            </div>
-
-            <!-- 카테고리 탭 (접기 버튼 포함) -->
-            <div class="flex border-b border-slate-100 relative pr-10">
+            
+            <!-- [위치 이동] 1. 카테고리 탭 -->
+            <div class="flex border-b border-slate-100 relative pr-10 mb-2">
                 <button onclick="switchTab('model')" id="tab-model" class="tab-btn active">📱 모델</button>
                 <button onclick="switchTab('service')" id="tab-service" class="tab-btn">🛠️ 서비스</button>
                 <button onclick="switchTab('delivery')" id="tab-delivery" class="tab-btn">📦 수령</button>
@@ -200,9 +162,9 @@
                     <svg id="fold-arrow" class="fold-icon transition-transform" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
                 </button>
             </div>
-            
-            <!-- 상세 필터 영역 (패딩 포함) -->
-            <div id="category-section" class="pt-2 pb-1">
+
+            <!-- [위치 이동] 2. 카테고리 상세 필터 -->
+            <div id="category-section" class="pb-3">
                 <div id="filter-group-model" class="flex gap-1.5 overflow-x-auto hide-scrollbar">
                     <button onclick="setModelFilter('all')" class="chip-btn model-filter-item active" data-id="all">전체</button>
                     <button onclick="setModelFilter('23U')" class="chip-btn model-filter-item" data-id="23U">23U</button>
@@ -231,10 +193,42 @@
                 </div>
             </div>
 
+            <!-- [위치 이동] 3. 검색바 -->
+            <div class="flex items-center gap-1.5 mb-2">
+                <div class="flex-1 relative header-input-box px-3 shadow-sm focus-within:ring-1 focus-within:ring-blue-400">
+                    <svg class="text-slate-400 mr-2 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" id="search-input" onkeyup="filterData()" placeholder="이름/연락처 검색" class="w-full bg-transparent border-none text-[12px] font-bold text-slate-900 placeholder-slate-400 outline-none p-0 h-full">
+                </div>
+                <button onclick="openCalendar()" class="header-icon-btn shadow-sm relative active:scale-95 transition-all">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <div id="date-active-dot" class="hidden absolute top-2 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full border border-white"></div>
+                </button>
+                <button id="venue-toggle" onclick="toggleVenueMode()" class="w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0 active:scale-95 transition-all">공연장</button>
+                <button onclick="fetchData()" class="header-icon-btn shadow-sm shrink-0 active:scale-95 transition-all">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                </button>
+            </div>
+
+            <!-- [위치 이동] 4. 날짜 바 -->
+            <div id="active-date-bar" class="hidden mb-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl flex justify-between items-center">
+                <span id="active-date-text" class="text-blue-600 text-xs font-bold"></span>
+                <button onclick="clearDate(event)" class="text-blue-400 hover:text-blue-600 font-bold text-[10px] px-2 py-1 bg-white rounded-lg border border-blue-100">해제</button>
+            </div>
+
+            <!-- [위치 이동] 5. 퀵 필터 -->
+            <div class="flex gap-1.5 mb-2 overflow-x-auto hide-scrollbar">
+                <button onclick="setSpecialFilter('this_week_parcel')" id="btn-quick-this-week" class="chip-btn flex items-center gap-1.5 active:scale-95 !rounded-full px-4 border-slate-300 flex-shrink-0">
+                    📦 이번주 택배 <span id="count-this-week-parcel" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1">0</span>
+                </button>
+                <button onclick="setSpecialFilter('this_week_office')" id="btn-quick-this-week-office" class="chip-btn flex items-center gap-1.5 active:scale-95 !rounded-full px-4 border-slate-300 flex-shrink-0">
+                    🏢 이번주 사무실 <span id="count-this-week-office" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1">0</span>
+                </button>
+            </div>
+
             <div id="venue-filters" class="hidden border-t border-slate-100 pt-2 pb-1">
                 <div class="flex gap-1.5 w-full">
-                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn venue-active-btn active flex-1 text-[12px]" data-val="venue_remaining">남은 0</button>
-                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn venue-active-btn flex-1 text-[12px]" data-val="venue_pickedup">수령 0</button>
+                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn active flex-1 text-[12px]" data-val="venue_remaining">남은 0</button>
+                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn flex-1 text-[12px]" data-val="venue_pickedup">수령 0</button>
                 </div>
             </div>
         </div>
@@ -407,8 +401,8 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbx3s9Aa-z6j9MKdRUn-CJjLKW1JHmI12S5xb3-b9UIlACmY0Ag3ELEUA902pXwuN_oS5Q/exec"; 
-        const MODEL_LIST = ['23U', '24U', '25U', '17P', '17PM'];
+        const API_URL = "https://script.google.com/macros/s/AKfycbwI5I0-DixwuepqkZSm9SDYDYu6hzKH6QSs8L3LR6ZlBPJyk1O_M_uI6DUVkvOVNYvscQ/exec"; 
+        const MODEL_LIST = ['23U', '24U', '25U', '26U', '17P', '17PM'];
         const STATUS_PRIORITY = { '예약신청': 1, '확정': 2, '반납완료': 3, '취소': 4 };
 
         let allData = [];
@@ -460,8 +454,9 @@
             let thisWeekParcelTargetCount = 0;
             let thisWeekOfficeTargetCount = 0;
 
+            // 실시간 수량 집계용 객체
             const counts = { 
-                model: { 'all': 0, '23U': 0, '24U': 0, '25U': 0, '17P': 0, '17PM': 0, '백업': 0, '연장': 0 },
+                model: { 'all': 0, '23U': 0, '24U': 0, '25U': 0, '26U': 0, '17P': 0, '17PM': 0, '백업': 0, '연장': 0 },
                 delivery: { 'all': 0, '택배': 0, '공연장': 0, '사무실': 0 },
                 return: { 'all': 0, '택배': 0, '당일': 0, '사무실': 0 },
                 venue: { rem: 0, pick: 0 }
@@ -511,9 +506,9 @@
                     if (delivery.includes('사무실')) counts.delivery['사무실']++;
 
                     counts.return.all++;
-                    if (returnWay.includes('택배')) counts.return['택배']++;
-                    if (returnWay.includes('당일')) counts.return['당일']++;
-                    if (returnWay.includes('사무실')) counts.return['사무실']++;
+                    if (item.returnWay && item.returnWay.includes('택배')) counts.return['택배']++;
+                    if (item.returnWay && item.returnWay.includes('당일')) counts.return['당일']++;
+                    if (item.returnWay && item.returnWay.includes('사무실')) counts.return['사무실']++;
 
                     if (delivery.includes('공연') || delivery.includes('현장')) {
                         const cleanModel = model.replace(/\s*\+?\s*보조배터리/g, '').trim();
@@ -767,6 +762,8 @@
             document.getElementById('edit-phone').value = item.phone || '';
             document.getElementById('edit-start').value = item.startDate || '';
             document.getElementById('edit-end').value = item.endDate || '';
+            document.getElementById('edit-delivery').value = item.delivery || '';
+            document.getElementById('edit-return-way').value = item.returnWay || '';
             document.getElementById('edit-tracking').value = item.trackingNumber || '';
             document.getElementById('edit-memo').value = item.memo || '';
             const priceField = document.getElementById('edit-price');
@@ -905,9 +902,24 @@
             const venueFilters = document.getElementById('venue-filters');
             btn.className = isVenueMode ? "w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0" : "w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0";
             if(venueFilters) venueFilters.classList.toggle('hidden', !isVenueMode);
+            if (!isVenueMode) {
+                currentFilterStatus = 'all';
+                document.querySelectorAll('.venue-active-btn').forEach(b => b.classList.remove('active'));
+            } else {
+                currentFilterStatus = 'venue_remaining';
+                document.getElementById('btn-venue-rem').classList.add('active');
+                document.getElementById('btn-venue-pick').classList.remove('active');
+            }
             filterData();
         }
-        function setVenueFilter(v) { currentFilterStatus = v; document.querySelectorAll('.venue-active-btn').forEach(b => b.classList.toggle('active', b.dataset.val === v)); filterData(); }
+
+        function setVenueFilter(v) { 
+            currentFilterStatus = v; 
+            document.querySelectorAll('.venue-active-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-val') === v);
+            });
+            filterData(); 
+        }
 
         function openCalendar() {
             renderCalendar();
@@ -943,4 +955,3 @@
     </script>
 </body>
 </html>
-

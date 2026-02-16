@@ -260,10 +260,10 @@
                         <div class="form-title">진행 상태</div>
                         <input type="hidden" id="edit-status-val">
                         <div class="grid grid-cols-4 gap-1.5">
-                            <button type="button" onclick="setEditStatus('예약신청')" id="btn-status-wait" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400">신청</button>
-                            <button type="button" onclick="setEditStatus('확정')" id="btn-status-confirm" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400">확정</button>
-                            <button type="button" onclick="setEditStatus('반납완료')" id="btn-status-return" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400">반납</button>
-                            <button type="button" onclick="setEditStatus('취소')" id="btn-status-cancel" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400">취소</button>
+                            <button type="button" onclick="setEditStatus('예약신청')" id="btn-status-wait" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">신청</button>
+                            <button type="button" onclick="setEditStatus('확정')" id="btn-status-confirm" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">확정</button>
+                            <button type="button" onclick="setEditStatus('반납완료')" id="btn-status-return" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">반납</button>
+                            <button type="button" onclick="setEditStatus('취소')" id="btn-status-cancel" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">취소</button>
                         </div>
                     </div>
 
@@ -315,43 +315,36 @@
                 </form>
             </div>
             <div class="p-5 border-t border-slate-200 flex gap-3 rounded-b-[28px] bg-white pb-10">
-                <button type="button" onclick="confirmDelete()" class="w-1/4 bg-red-50 text-red-600 font-bold py-4 rounded-2xl active:scale-95 text-sm transition-all">삭제</button>
-                <button type="button" onclick="submitUpdate(event)" id="save-btn" class="w-3/4 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-100 active:scale-95 text-base transition-all">수정 완료하기</button>
+                <button type="button" onclick="confirmDelete()" class="w-1/4 bg-[#FEE2E2] text-[#DC2626] font-bold py-4 rounded-2xl active:scale-95 transition-all text-sm">삭제</button>
+                <button type="button" onclick="submitUpdate(event)" id="save-btn" class="w-3/4 bg-[#0064FF] text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-100 active:scale-95 text-base transition-all">수정 완료하기</button>
             </div>
         </div>
     </div>
 
-    <!-- 캘린더 모달 (중앙 팝업) -->
-    <div id="calendar-modal-root">
-        <div class="modal-overlay" onclick="closeCalendar()"></div>
-        <div class="center-modal shadow-2xl bg-white">
-            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center rounded-t-[28px]">
-                <h2 class="text-lg font-bold text-slate-800">날짜 선택</h2>
-                <button onclick="closeCalendar()" class="p-2 text-slate-400 transition-all">✕</button>
+    <!-- 토스 스타일 알림창 -->
+    <div id="app-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center px-6">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onclick="closeAppModal()"></div>
+        <div id="app-modal-box" class="bg-white rounded-[28px] p-7 w-full max-w-xs relative z-10 shadow-2xl transform transition-all">
+            <div class="text-center mb-6">
+                <div id="modal-icon" class="text-4xl mb-4">🔔</div>
+                <h3 id="modal-title" class="text-xl font-black text-[#191F28] mb-2">알림</h3>
+                <p id="modal-message" class="text-[#4E5968] text-sm font-medium leading-relaxed break-keep"></p>
             </div>
-            <div class="p-5">
-                <div class="flex justify-between items-center mb-6 px-4">
-                    <button onclick="moveMonth(-1)" class="p-2 text-slate-500 active:scale-75 transition-all">◀</button>
-                    <div id="cal-month-title" class="text-lg font-black text-slate-900"></div>
-                    <button onclick="moveMonth(1)" class="p-2 text-slate-500 active:scale-75 transition-all">▶</button>
-                </div>
-                <div class="cal-header-grid mb-3">
-                    <div class="text-[11px] font-bold text-red-400">일</div>
-                    <div class="text-[11px] font-bold text-slate-400">월</div>
-                    <div class="text-[11px] font-bold text-slate-400">화</div>
-                    <div class="text-[11px] font-bold text-slate-400">수</div>
-                    <div class="text-[11px] font-bold text-slate-400">목</div>
-                    <div class="text-[11px] font-bold text-slate-400">금</div>
-                    <div class="text-[11px] font-bold text-blue-400">토</div>
-                </div>
-                <div id="cal-grid" class="cal-body-grid gap-y-1"></div>
-            </div>
+            <div id="modal-actions" class="flex flex-col gap-2"></div>
         </div>
     </div>
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbx3s9Aa-z6j9MKdRUn-CJjLKW1JHmI12S5xb3-b9UIlACmY0Ag3ELEUA902pXwuN_oS5Q/exec"; 
         const MODEL_LIST = ['23U', '24U', '25U', '17P', '17PM'];
+
+        // 정렬 순서 정의
+        const STATUS_PRIORITY = {
+            '예약신청': 1,
+            '확정': 2,
+            '반납완료': 3,
+            '취소': 4
+        };
 
         let allData = [];
         let currentFilterStatus = 'all';
@@ -370,12 +363,26 @@
                 const res = await fetch(`${API_URL}?type=admin_list`);
                 const json = await res.json();
                 if(json.result === 'success') {
-                    // row 번호 기준으로 역순 정렬 (최신순)
-                    allData = json.data.sort((a, b) => b.row - a.row);
+                    // [변경] 초기 데이터 정렬: 상태순(신청-확정-반납-취소) -> 시간순(최신순)
+                    allData = json.data.sort(sortLogic);
                     filterData();
                 } else { showToast("데이터 로드 실패"); }
             } catch(e) { showToast("네트워크 오류"); } 
             finally { toggleLoading(false); }
+        }
+
+        // 정렬 로직 함수화 (상태 순서 우선, 같은 상태 내에서는 최신순)
+        function sortLogic(a, b) {
+            const pA = STATUS_PRIORITY[a.status] || 5;
+            const pB = STATUS_PRIORITY[b.status] || 5;
+            
+            if (pA !== pB) return pA - pB; // 상태 우선 정렬
+            
+            // 보조 정렬: 접수 시간 최신순
+            const timeA = new Date(a.orderTime).getTime();
+            const timeB = new Date(b.orderTime).getTime();
+            if (!isNaN(timeA) && !isNaN(timeB)) return timeB - timeA;
+            return b.row - a.row;
         }
 
         function toggleLoading(show) {
@@ -388,7 +395,6 @@
         function filterData() {
             const query = document.getElementById('search-input').value.toLowerCase();
             
-            // 실시간 수량 계산용 변수
             const counts = { 
                 model: { 'all': 0, '23U': 0, '24U': 0, '25U': 0, '17P': 0, '17PM': 0, '백업': 0, '연장': 0 },
                 delivery: { 'all': 0, '택배': 0, '공연장': 0, '사무실': 0 },
@@ -407,7 +413,6 @@
                 const matchQuery = name.includes(query) || phone.includes(query) || model.includes(query);
                 let matchDate = !selectedDate || (selectedDate === item.startDate);
                 
-                // 수량 집계 (필터 무관 전체 집계)
                 if (matchDate) {
                     counts.model.all++;
                     if (model.includes('23U')) counts.model['23U']++;
@@ -453,8 +458,10 @@
             });
 
             updateFilterUI(counts);
-            // 최신순 정렬 (Row 번호 기준 내림차순)
-            filtered.sort((a, b) => b.row - a.row);
+            
+            // [변경] 정렬 적용: 상태순 -> 시간순
+            filtered.sort(sortLogic);
+            
             renderList(filtered); 
         }
 
@@ -572,15 +579,10 @@
             isVenueMode = !isVenueMode;
             const btn = document.getElementById('venue-toggle');
             const venueFilters = document.getElementById('venue-filters');
-            
-            // 공연장 모드 버튼 UI
             btn.className = isVenueMode ? 
                 "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0" : 
                 "w-[60px] flex items-center justify-center h-[44px] px-1 rounded-xl text-[10px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0";
-            
             if(venueFilters) venueFilters.classList.toggle('hidden', !isVenueMode);
-
-            // 중요: 모드 전환 시 필터 상태 초기화하여 정보 증발 방지
             if (!isVenueMode) {
                 currentFilterStatus = 'all';
                 document.querySelectorAll('.venue-active-btn').forEach(b => b.classList.remove('active'));
@@ -589,7 +591,6 @@
                 document.getElementById('btn-venue-rem').classList.add('active');
                 document.getElementById('btn-venue-pick').classList.remove('active');
             }
-            
             filterData();
         }
 
@@ -659,6 +660,26 @@
             setTimeout(() => { if(root) root.style.display = 'none'; document.body.classList.remove('modal-open'); }, 300);
         }
 
+        function showAppAlert(msg, title = "알림", icon = "✨") {
+            setupModal(title, msg, icon, `<button onclick="closeAppModal()" class="w-full bg-[#191F28] text-white font-bold py-4 rounded-2xl text-base">확인</button>`);
+        }
+        function showAppConfirm(msg, onConfirm, title="확인", btnText="확인", btnColor="bg-[#0064FF]", icon="🤔") {
+            setupModal(title, msg, icon, `
+                <button id="confirm-exec-btn" class="w-full ${btnColor} text-white font-bold py-4 rounded-2xl text-base mb-1">${btnText}</button>
+                <button onclick="closeAppModal()" class="w-full bg-[#F2F4F6] text-[#4E5968] font-bold py-4 rounded-2xl text-base">취소</button>
+            `);
+            document.getElementById('confirm-exec-btn').onclick = () => { closeAppModal(); onConfirm(); };
+        }
+        function setupModal(title, msg, icon, buttons) {
+            const m = document.getElementById('app-modal');
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = msg;
+            document.getElementById('modal-icon').innerText = icon;
+            document.getElementById('modal-actions').innerHTML = buttons;
+            m.classList.remove('hidden');
+        }
+        function closeAppModal() { document.getElementById('app-modal').classList.add('hidden'); }
+
         document.getElementById('edit-battery').onchange = function() { updateBatteryUI(this.checked); };
         function updateBatteryUI(checked) {
             const box = document.getElementById('battery-box-ui');
@@ -683,15 +704,18 @@
                 returnWay: document.getElementById('edit-return-way').value, status: document.getElementById('edit-status-val').value, tracking: document.getElementById('edit-tracking').value,
                 model: finalModel, memo: document.getElementById('edit-memo').value, totalPrice: document.getElementById('edit-price').value
             };
-            try { await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); showToast("정보를 수정했습니다."); closeModal(); setTimeout(fetchData, 500); } 
+            try { await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); showAppAlert("정보를 수정했습니다.", "완료", "✅"); closeModal(); setTimeout(fetchData, 500); } 
             catch(err) { showToast("저장에 실패했습니다."); } finally { btn.innerText = '수정 완료하기'; btn.disabled = false; }
         }
 
+        function processDelete() {
+            const rowId = document.getElementById('edit-row').value;
+            fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'delete', row: rowId }) })
+            .then(() => { showAppAlert("삭제되었습니다.", "완료", "🗑️"); closeModal(); fetchData(); });
+        }
+
         function confirmDelete() {
-            if(confirm("이 예약을 정말 삭제할까요?")) {
-                fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'delete', row: document.getElementById('edit-row').value }) })
-                .then(() => { showToast("삭제되었습니다."); closeModal(); fetchData(); });
-            }
+            showAppConfirm("이 예약을 정말 삭제할까요?", processDelete, "삭제 확인", "삭제하기", "bg-[#DC2626]", "🗑️");
         }
 
         function copyToClipboard(text, e) {

@@ -15,7 +15,7 @@
             --card-bg: #FFFFFF;
             --text-main: #0F172A; 
             --text-sub: #64748B;  
-            --border: #E2E8F0;    
+            --border: #CBD5E1;   
         }
 
         body { 
@@ -28,6 +28,13 @@
             width: 100%;
         }
 
+        /* 숫자 너비 고정 (Tabular Nums) */
+        .font-tnum {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+            letter-spacing: 0;
+        }
+
         .pt-safe { padding-top: env(safe-area-inset-top, 20px); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
 
@@ -38,25 +45,34 @@
         
         .card {
             background: var(--card-bg);
-            border-width: 2px;
+            border-width: 1px;
             border-style: solid;
+            border-color: var(--border);
             border-radius: 20px; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
         }
         .card:active { background-color: #F1F5F9; transform: scale(0.98); }
 
+        /* 상태별 테두리 색상 강조 */
+        .card.border-blue-500 { border-color: #3B82F6; border-width: 2px; }
+        .card.border-emerald-500 { border-color: #10B981; border-width: 2px; }
+        .card.border-slate-300 { border-color: #CBD5E1; }
+        .card.border-purple-500 { border-color: #8B5CF6; border-width: 2px; } /* 대기 상태 보라색 */
+        .card.border-red-500 { border-color: #EF4444; border-width: 2px; }
+
         .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; line-height: 1; border: 1px solid transparent; white-space: nowrap; }
         .status-wait { background-color: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
         .status-confirm { background-color: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
         .status-return { background-color: #F1F5F9; color: #475569; border-color: #E2E8F0; }
+        .status-hold { background-color: #F5F3FF; color: #7C3AED; border-color: #DDD6FE; } /* 대기 상태 배지 */
         .status-cancel { background-color: #FEF2F2; color: #DC2626; border-color: #FECACA; }
 
         .header-fixed {
             background-color: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid #E2E8F0;
         }
 
         #modal-root, #calendar-modal-root { 
@@ -86,13 +102,14 @@
         .form-title { font-size: 13px; font-weight: 800; color: #1E293B; margin-bottom: 12px; display: flex; align-items: center; }
         .form-title::before { content: ''; width: 3px; height: 12px; background: var(--primary); margin-right: 8px; border-radius: 2px; }
         .input-label { display: block; font-size: 11px; font-weight: 700; color: #64748B; margin-bottom: 5px; margin-left: 2px; }
-        .input-field { width: 100%; padding: 12px; background: white; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 14px; font-weight: 600; outline: none; }
+        
+        .input-field { width: 100%; padding: 12px; background: white; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 14px; font-weight: 600; outline: none; font-family: inherit; }
         .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 
         .status-btn { border: 1px solid #E2E8F0; background: white; font-size: 12px; font-weight: 600; color: #64748B; padding: 12px 0; border-radius: 10px; transition: all 0.2s; }
         
         .chip-btn { 
-            border: 1px solid var(--border); 
+            border: 1px solid #E2E8F0; 
             background: white; 
             color: var(--text-sub); 
             transition: all 0.1s; 
@@ -155,7 +172,6 @@
             <!-- [위치 이동] 1. 카테고리 탭 -->
             <div class="flex border-b border-slate-100 relative pr-10 mb-2">
                 <button onclick="switchTab('model')" id="tab-model" class="tab-btn active">📱 모델</button>
-                <button onclick="switchTab('service')" id="tab-service" class="tab-btn">🛠️ 서비스</button>
                 <button onclick="switchTab('delivery')" id="tab-delivery" class="tab-btn">📦 수령</button>
                 <button onclick="switchTab('return')" id="tab-return" class="tab-btn">↩️ 반납</button>
                 <button onclick="toggleCategorySection()" class="absolute right-0 top-0 bottom-0 w-10 flex items-center justify-center text-slate-400">
@@ -174,11 +190,6 @@
                     <button onclick="setModelFilter('17P')" class="chip-btn model-filter-item" data-id="17P">17P</button>
                     <button onclick="setModelFilter('17PM')" class="chip-btn model-filter-item" data-id="17PM">17PM</button>
                 </div>
-                <div id="filter-group-service" class="hidden gap-1.5 overflow-x-auto hide-scrollbar">
-                    <button onclick="setModelFilter('all')" class="chip-btn model-filter-item active" data-id="all">전체</button>
-                    <button onclick="setModelFilter('백업')" class="chip-btn model-filter-item" data-id="백업">백업</button>
-                    <button onclick="setModelFilter('연장')" class="chip-btn model-filter-item" data-id="연장">연장</button>
-                </div>
                 <div id="filter-group-delivery" class="hidden gap-1.5 overflow-x-auto hide-scrollbar">
                     <button onclick="setDeliveryFilter('all')" class="chip-btn delivery-filter-item active" data-id="all">전체</button>
                     <button onclick="setDeliveryFilter('택배')" class="chip-btn delivery-filter-item" data-id="택배">택배</button>
@@ -193,17 +204,24 @@
                 </div>
             </div>
 
-            <!-- [위치 이동] 3. 검색바 -->
+            <!-- [위치 이동] 3. 검색바 & 백업 & 연장 버튼 -->
             <div class="flex items-center gap-1.5 mb-2">
                 <div class="flex-1 relative header-input-box px-3 shadow-sm focus-within:ring-1 focus-within:ring-blue-400">
                     <svg class="text-slate-400 mr-2 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                     <input type="text" id="search-input" onkeyup="filterData()" placeholder="이름/연락처 검색" class="w-full bg-transparent border-none text-[12px] font-bold text-slate-900 placeholder-slate-400 outline-none p-0 h-full">
                 </div>
+
+                <button onclick="toggleBackupFilter()" id="btn-quick-backup" class="h-[38px] px-3 rounded-xl text-[12px] font-bold border border-slate-200 bg-white text-slate-600 shadow-sm shrink-0 active:scale-95 transition-all flex items-center gap-1">
+                    💾 백업 <span id="quick-backup-count" class="ml-1 text-[10px] opacity-70 font-tnum">0</span>
+                </button>
+                <button onclick="toggleExtensionFilter()" id="btn-quick-extension" class="h-[38px] px-3 rounded-xl text-[12px] font-bold border border-slate-200 bg-white text-slate-600 shadow-sm shrink-0 active:scale-95 transition-all flex items-center gap-1">
+                    ⏰ 연장 <span id="quick-extension-count" class="ml-1 text-[10px] opacity-70 font-tnum">0</span>
+                </button>
+
                 <button onclick="openCalendar()" class="header-icon-btn shadow-sm relative active:scale-95 transition-all">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     <div id="date-active-dot" class="hidden absolute top-2 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full border border-white"></div>
                 </button>
-                <button id="venue-toggle" onclick="toggleVenueMode()" class="w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0 active:scale-95 transition-all">공연장</button>
                 <button onclick="fetchData()" class="header-icon-btn shadow-sm shrink-0 active:scale-95 transition-all">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                 </button>
@@ -211,25 +229,21 @@
 
             <!-- [위치 이동] 4. 날짜 바 -->
             <div id="active-date-bar" class="hidden mb-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl flex justify-between items-center">
-                <span id="active-date-text" class="text-blue-600 text-xs font-bold"></span>
+                <span id="active-date-text" class="text-blue-600 text-xs font-bold font-tnum"></span>
                 <button onclick="clearDate(event)" class="text-blue-400 hover:text-blue-600 font-bold text-[10px] px-2 py-1 bg-white rounded-lg border border-blue-100">해제</button>
             </div>
 
             <!-- [위치 이동] 5. 퀵 필터 -->
             <div class="flex gap-1.5 mb-2 overflow-x-auto hide-scrollbar">
                 <button onclick="setSpecialFilter('this_week_parcel')" id="btn-quick-this-week" class="chip-btn flex items-center gap-1.5 active:scale-95 !rounded-full px-4 border-slate-300 flex-shrink-0">
-                    📦 이번주 택배 <span id="count-this-week-parcel" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1">0</span>
+                    📦 이번주 택배 <span id="count-this-week-parcel" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1 font-tnum">0</span>
+                </button>
+                <button onclick="setSpecialFilter('this_week_venue')" id="btn-quick-this-week-venue" class="chip-btn flex items-center gap-1.5 active:scale-95 !rounded-full px-4 border-slate-300 flex-shrink-0">
+                    🎤 이번주 공연장 <span id="count-this-week-venue" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1 font-tnum">0</span>
                 </button>
                 <button onclick="setSpecialFilter('this_week_office')" id="btn-quick-this-week-office" class="chip-btn flex items-center gap-1.5 active:scale-95 !rounded-full px-4 border-slate-300 flex-shrink-0">
-                    🏢 이번주 사무실 <span id="count-this-week-office" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1">0</span>
+                    🏢 이번주 사무실 <span id="count-this-week-office" class="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-black ml-1 font-tnum">0</span>
                 </button>
-            </div>
-
-            <div id="venue-filters" class="hidden border-t border-slate-100 pt-2 pb-1">
-                <div class="flex gap-1.5 w-full">
-                    <button id="btn-venue-rem" onclick="setVenueFilter('venue_remaining')" class="chip-btn active flex-1 text-[12px]" data-val="venue_remaining">남은 0</button>
-                    <button id="btn-venue-pick" onclick="setVenueFilter('venue_pickedup')" class="chip-btn flex-1 text-[12px]" data-val="venue_pickedup">수령 0</button>
-                </div>
             </div>
         </div>
         <input type="date" id="filter-date" class="hidden">
@@ -261,13 +275,13 @@
                     <div class="form-section shadow-sm">
                         <div class="flex justify-between items-center mb-3">
                             <div class="form-title !mb-0">고객 정보</div>
-                            <span id="display-order-time" class="text-[11px] font-bold text-slate-400 font-mono">접수: -</span>
+                            <span id="display-order-time" class="text-[11px] font-bold text-slate-400 font-tnum">접수: -</span>
                         </div>
                         <div class="grid grid-cols-12 gap-3">
                             <div class="col-span-4 input-group"><label class="input-label">이름</label><input type="text" id="edit-name" class="input-field"></div>
                             <div class="col-span-8 input-group">
                                 <label class="input-label">연락처</label>
-                                <input type="text" id="edit-phone" class="input-field font-mono font-bold">
+                                <input type="text" id="edit-phone" class="input-field font-tnum font-bold">
                             </div>
                         </div>
                     </div>
@@ -277,9 +291,9 @@
                         <input type="hidden" id="edit-status-val">
                         <div class="grid grid-cols-4 gap-1.5">
                             <button type="button" onclick="setEditStatus('예약신청')" id="btn-status-wait" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">신청</button>
+                            <button type="button" onclick="setEditStatus('대기')" id="btn-status-hold" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">대기</button>
                             <button type="button" onclick="setEditStatus('확정')" id="btn-status-confirm" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">확정</button>
                             <button type="button" onclick="setEditStatus('반납완료')" id="btn-status-return" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">반납</button>
-                            <button type="button" onclick="setEditStatus('취소')" id="btn-status-cancel" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">취소</button>
                         </div>
                     </div>
 
@@ -299,7 +313,7 @@
                                 </div>
                                 <input type="hidden" id="edit-model-type">
                                 <div class="flex gap-3 mt-3">
-                                    <div class="flex-[2]"><label class="input-label">기기 상세/번호</label><input type="text" id="edit-device-id" placeholder="예: 12" class="input-field"></div>
+                                    <div class="flex-[2]"><label class="input-label">기기 상세/번호</label><input type="text" id="edit-device-id" placeholder="예: 12" class="input-field font-tnum"></div>
                                     <div class="flex-1">
                                         <label class="input-label">보조배터리</label>
                                         <label class="checkbox-wrapper cursor-pointer block h-[46px]">
@@ -311,9 +325,9 @@
                             </div>
                             <div>
                                 <label class="input-label">결제 금액</label>
-                                <input type="text" id="edit-price" placeholder="금액 입력" inputmode="numeric" class="input-field font-bold text-blue-600">
+                                <input type="text" id="edit-price" placeholder="금액 입력" inputmode="numeric" class="input-field font-bold text-blue-600 font-tnum">
                             </div>
-                            <div><label class="input-label">송장번호</label><input type="text" id="edit-tracking" placeholder="숫자만 입력" inputmode="numeric" class="input-field font-mono font-bold"></div>
+                            <div><label class="input-label">송장번호</label><input type="text" id="edit-tracking" placeholder="숫자만 입력" inputmode="numeric" class="input-field font-tnum font-bold"></div>
                             <div><label class="input-label">메모</label><textarea id="edit-memo" rows="2" placeholder="메모 입력" class="input-field resize-none"></textarea></div>
                         </div>
                     </div>
@@ -326,8 +340,8 @@
                         </div>
                         <div id="schedule-section" class="mt-4">
                             <div class="grid grid-cols-2 gap-3 mb-4">
-                                <div><label class="input-label">수령일</label><input type="date" id="edit-start" class="input-field"></div>
-                                <div><label class="input-label">반납일</label><input type="date" id="edit-end" class="input-field"></div>
+                                <div><label class="input-label">수령일</label><input type="date" id="edit-start" class="input-field font-tnum"></div>
+                                <div><label class="input-label">반납일</label><input type="date" id="edit-end" class="input-field font-tnum"></div>
                             </div>
                             <div class="mb-3">
                                 <label class="input-label">수령 방법</label>
@@ -383,7 +397,7 @@
             <div class="p-5">
                 <div class="flex justify-between items-center mb-6 px-4">
                     <button onclick="moveMonth(-1)" class="p-2 text-slate-500 active:scale-75 transition-all">◀</button>
-                    <div id="cal-month-title" class="text-lg font-black text-slate-900"></div>
+                    <div id="cal-month-title" class="text-lg font-black text-slate-900 font-tnum"></div>
                     <button onclick="moveMonth(1)" class="p-2 text-slate-500 active:scale-75 transition-all">▶</button>
                 </div>
                 <div class="cal-header-grid mb-3">
@@ -395,7 +409,7 @@
                     <div class="text-[11px] font-bold text-slate-400">금</div>
                     <div class="text-[11px] font-bold text-blue-400">토</div>
                 </div>
-                <div id="cal-grid" class="cal-body-grid gap-y-1"></div>
+                <div id="cal-grid" class="cal-body-grid gap-y-1 font-tnum"></div>
             </div>
         </div>
     </div>
@@ -403,7 +417,7 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbyvDQyTPynU4oLmJ2OUMo-n5DNRr_r08Mk1LoC2HZuk28DvSD9zuW0XPNixx9UvjirN5w/exec"; 
         const MODEL_LIST = ['23U', '24U', '25U', '26U', '17P', '17PM'];
-        const STATUS_PRIORITY = { '예약신청': 1, '확정': 2, '반납완료': 3, '취소': 4 };
+        const STATUS_PRIORITY = { '예약신청': 1, '대기': 2, '확정': 3, '반납완료': 4, '취소': 5 };
 
         let allData = [];
         let currentFilterStatus = 'all';
@@ -431,8 +445,8 @@
         }
 
         function sortLogic(a, b) {
-            const pA = STATUS_PRIORITY[a.status] || 5;
-            const pB = STATUS_PRIORITY[b.status] || 5;
+            const pA = STATUS_PRIORITY[a.status] || 6;
+            const pB = STATUS_PRIORITY[b.status] || 6;
             if (pA !== pB) return pA - pB; 
             const timeA = new Date(a.orderTime).getTime();
             const timeB = new Date(b.orderTime).getTime();
@@ -453,8 +467,8 @@
             
             let thisWeekParcelTargetCount = 0;
             let thisWeekOfficeTargetCount = 0;
+            let thisWeekVenueTargetCount = 0; 
 
-            // 실시간 수량 집계용 객체
             const counts = { 
                 model: { 'all': 0, '23U': 0, '24U': 0, '25U': 0, '26U': 0, '17P': 0, '17PM': 0, '백업': 0, '연장': 0 },
                 delivery: { 'all': 0, '택배': 0, '공연장': 0, '사무실': 0 },
@@ -470,30 +484,38 @@
                 const status = (item.status || '');
                 const tracking = (item.trackingNumber || '').toString().trim();
                 const startDateStr = item.startDate;
-                const returnWay = (item.returnWay || '');
                 
                 let isThisWeekParcelTarget = false;
                 let isThisWeekOfficeTarget = false;
+                let isThisWeekVenueTarget = false; 
+
+                // [변경] 기기 번호 배정 여부 확인 (숫자로 끝나면 배정됨)
+                const cleanModel = model.replace(/\s*\+?\s*보조배터리/g, '').trim();
+                const isAssigned = /\d$/.test(cleanModel);
 
                 if (startDateStr && status !== '취소') {
                     const startDate = new Date(startDateStr);
                     const diffTime = startDate.getTime() - today.getTime();
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
-                    if (delivery.includes('택배') && !tracking && diffDays >= 1 && diffDays <= 5) {
+                    // [변경] 배정되지 않은 건(!isAssigned)만 카운트
+                    if (delivery.includes('택배') && !tracking && diffDays >= 1 && diffDays <= 5 && !isAssigned) {
                         isThisWeekParcelTarget = true;
                         thisWeekParcelTargetCount++;
                     }
-                    if (delivery.includes('사무실') && diffDays >= 1 && diffDays <= 2) {
+                    if (delivery.includes('사무실') && diffDays >= 1 && diffDays <= 2 && !isAssigned) {
                         isThisWeekOfficeTarget = true;
                         thisWeekOfficeTargetCount++;
+                    }
+                    if ((delivery.includes('공연') || delivery.includes('현장')) && diffDays >= 0 && diffDays <= 5 && !isAssigned) {
+                        isThisWeekVenueTarget = true;
+                        thisWeekVenueTargetCount++;
                     }
                 }
 
                 const matchQuery = name.includes(query) || phone.includes(query) || model.includes(query);
                 let matchDate = !selectedDate || (selectedDate === item.startDate);
 
-                // 수량 집계
                 if (matchDate) {
                     counts.model.all++;
                     MODEL_LIST.forEach(m => { if(model.includes(m)) counts.model[m]++; });
@@ -511,8 +533,7 @@
                     if (item.returnWay && item.returnWay.includes('사무실')) counts.return['사무실']++;
 
                     if (delivery.includes('공연') || delivery.includes('현장')) {
-                        const cleanModel = model.replace(/\s*\+?\s*보조배터리/g, '').trim();
-                        if(/\d$/.test(cleanModel)) counts.venue.pick++; else counts.venue.rem++;
+                        if(isAssigned) counts.venue.pick++; else counts.venue.rem++;
                     }
                 }
 
@@ -520,6 +541,8 @@
                     if (!isThisWeekParcelTarget) return false;
                 } else if (specialFilter === 'this_week_office') {
                     if (!isThisWeekOfficeTarget) return false;
+                } else if (specialFilter === 'this_week_venue') { 
+                    if (!isThisWeekVenueTarget) return false;
                 } else {
                     if (currentFilterStatus !== 'all' && status !== currentFilterStatus) return false;
                 }
@@ -530,8 +553,6 @@
 
                 if (isVenueMode) {
                     if (!delivery.includes('공연') && !delivery.includes('현장')) return false;
-                    const cleanModel = model.replace(/\s*\+?\s*보조배터리/g, '').trim();
-                    const isAssigned = /\d$/.test(cleanModel);
                     if (currentFilterStatus === 'venue_remaining' && isAssigned) return false;
                     if (currentFilterStatus === 'venue_pickedup' && !isAssigned) return false;
                 }
@@ -541,6 +562,13 @@
 
             document.getElementById('count-this-week-parcel').innerText = thisWeekParcelTargetCount;
             document.getElementById('count-this-week-office').innerText = thisWeekOfficeTargetCount;
+            document.getElementById('count-this-week-venue').innerText = thisWeekVenueTargetCount; 
+            
+            const backupCountEl = document.getElementById('quick-backup-count');
+            if(backupCountEl) backupCountEl.innerText = counts.model['백업'];
+            
+            const extensionCountEl = document.getElementById('quick-extension-count');
+            if(extensionCountEl) extensionCountEl.innerText = counts.model['연장'];
 
             updateFilterUI(counts);
             filtered.sort(sortLogic);
@@ -560,10 +588,43 @@
             updateTabCounts('filter-group-model', counts.model);
             updateTabCounts('filter-group-delivery', counts.delivery);
             updateTabCounts('filter-group-return', counts.return);
+            
+            const backupBtn = document.getElementById('btn-quick-backup');
+            if(backupBtn) {
+                if(currentModelFilter === '백업') {
+                    backupBtn.classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+                    backupBtn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                } else {
+                    backupBtn.classList.remove('bg-slate-800', 'text-white', 'border-slate-800');
+                    backupBtn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+                }
+            }
 
-            if(isVenueMode) {
-                document.getElementById('btn-venue-rem').innerText = `남은 ${counts.venue.rem}`;
-                document.getElementById('btn-venue-pick').innerText = `수령 ${counts.venue.pick}`;
+            const extensionBtn = document.getElementById('btn-quick-extension');
+            if(extensionBtn) {
+                if(currentModelFilter === '연장') {
+                    extensionBtn.classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+                    extensionBtn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                } else {
+                    extensionBtn.classList.remove('bg-slate-800', 'text-white', 'border-slate-800');
+                    extensionBtn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+                }
+            }
+        }
+
+        function toggleBackupFilter() {
+            if (currentModelFilter === '백업') {
+                setModelFilter('all');
+            } else {
+                setModelFilter('백업');
+            }
+        }
+
+        function toggleExtensionFilter() {
+            if (currentModelFilter === '연장') {
+                setModelFilter('all');
+            } else {
+                setModelFilter('연장');
             }
         }
 
@@ -572,13 +633,16 @@
                 specialFilter = null;
                 document.getElementById('btn-quick-this-week').classList.remove('active');
                 document.getElementById('btn-quick-this-week-office').classList.remove('active');
+                document.getElementById('btn-quick-this-week-venue').classList.remove('active'); 
             } else {
                 specialFilter = type;
                 currentFilterStatus = 'all'; 
                 document.getElementById('btn-quick-this-week').classList.toggle('active', type === 'this_week_parcel');
                 document.getElementById('btn-quick-this-week-office').classList.toggle('active', type === 'this_week_office');
+                document.getElementById('btn-quick-this-week-venue').classList.toggle('active', type === 'this_week_venue'); 
+                
                 document.querySelectorAll('.chip-btn').forEach(b => {
-                   if(b.id !== 'btn-quick-this-week' && b.id !== 'btn-quick-this-week-office') b.classList.remove('active');
+                   if(b.id !== 'btn-quick-this-week' && b.id !== 'btn-quick-this-week-office' && b.id !== 'btn-quick-this-week-venue') b.classList.remove('active');
                 });
             }
             filterData();
@@ -589,6 +653,7 @@
             currentFilterStatus = status;
             document.getElementById('btn-quick-this-week').classList.remove('active');
             document.getElementById('btn-quick-this-week-office').classList.remove('active');
+            document.getElementById('btn-quick-this-week-venue').classList.remove('active'); 
             document.querySelectorAll('.chip-btn').forEach(btn => {
                 const btnText = btn.innerText;
                 const pureText = btnText.split('(')[0].trim();
@@ -598,28 +663,23 @@
             filterData();
         }
 
-        function toggleSection(contentId, arrowId) {
-            const content = document.getElementById(contentId);
-            const arrow = document.getElementById(arrowId);
-            content.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
-        }
-
         function renderList(list) {
             const container = document.getElementById('list-container');
             container.innerHTML = '';
             if(!list.length) { container.innerHTML = `<div class="col-span-2 py-20 text-center text-slate-400 text-sm font-medium">정보가 없습니다.</div>`; return; }
             
             list.forEach(item => {
-                let borderColor = 'border-slate-200';
+                let borderColor = 'border-slate-300';
                 if(item.status === '예약신청') borderColor = 'border-blue-500';
                 else if(item.status === '확정') borderColor = 'border-emerald-500';
                 else if(item.status === '반납완료') borderColor = 'border-slate-300';
+                else if(item.status === '대기') borderColor = 'border-purple-500';
                 else if(item.status === '취소') borderColor = 'border-red-500';
 
                 let badgeClass = 'status-wait', badgeText = '신청';
                 if(item.status === '확정') { badgeClass = 'status-confirm'; badgeText = '확정'; }
                 else if(item.status === '반납완료') { badgeClass = 'status-return'; badgeText = '반납'; }
+                else if(item.status === '대기') { badgeClass = 'status-hold'; badgeText = '대기'; }
                 else if(item.status === '취소') { badgeClass = 'status-cancel'; badgeText = '취소'; }
 
                 const time = formatTime(item.orderTime);
@@ -632,13 +692,20 @@
                 const truck = item.trackingNumber ? '🚚' : '';
                 const memo = item.memo ? '📝' : '';
 
+                // [추가] 결제 수단 간략화 로직
+                const rawPay = item.paymentMethod || ''; 
+                let payShort = rawPay;
+                if(rawPay.includes('계좌이체')) payShort = '이체';
+                else if(rawPay.includes('네이버스토어결제')) payShort = '카드';
+                else if(rawPay === '') payShort = '-';
+
                 const card = document.createElement('div');
                 card.className = `card px-4 pt-2 pb-4 relative flex flex-col gap-1.5 ${borderColor}`;
                 card.onclick = () => openModal(item);
                 
                 card.innerHTML = `
                     <div class="flex justify-end text-right">
-                         <span class="text-[9px] leading-tight text-slate-400 font-medium">${time}</span>
+                         <span class="text-[9px] leading-tight text-slate-400 font-medium font-tnum">${time}</span>
                     </div>
                     <div class="flex flex-col gap-0.5">
                          <div class="flex items-center gap-1.5">
@@ -647,7 +714,7 @@
                             <span>${memo}</span>
                         </div>
                         <div class="flex items-center gap-1 mt-1 pl-0.5">
-                            <span class="text-[12px] text-slate-500 font-mono font-bold">${item.phone || ''}</span>
+                            <span class="text-[12px] text-slate-500 font-mono font-bold font-tnum">${item.phone || ''}</span>
                             <button onclick="copyToClipboard('${item.phone}', event)" class="p-1 bg-transparent rounded text-slate-300 active:scale-75">
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>
@@ -659,7 +726,7 @@
                              ${battery}
                          </div>
                          <div class="text-[14px] font-extrabold text-slate-800 truncate leading-tight">${item.scheduleName || '-'}</div>
-                         <div class="flex items-center gap-2 text-[13px] font-black text-slate-700">
+                         <div class="flex items-center gap-2 text-[13px] font-black text-slate-700 font-tnum">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             <span>${start} ~ ${end}</span>
                          </div>
@@ -668,11 +735,15 @@
                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                                  <span>${clean(item.delivery)} ➔ ${clean(item.returnWay)}</span>
                              </div>
-                             <span class="text-[12px]">${truck}</span>
+                             <span class="text-[12px] font-tnum">${truck}</span>
                          </div>
+                         <!-- [변경] 결제 수단 추가 및 레이아웃 조정 -->
                          <div class="flex justify-between items-center pt-1 border-t border-slate-200">
-                             <span class="text-[10px] font-bold text-slate-400">결제금액</span>
-                             <span class="text-[16px] font-black text-slate-900 tracking-tight">${price}</span>
+                             <div class="flex items-center gap-1">
+                                 <span class="text-[10px] font-bold text-slate-400">결제</span>
+                                 <span class="text-[11px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">${payShort}</span>
+                             </div>
+                             <span class="text-[16px] font-black text-slate-900 tracking-tight font-tnum">${price}</span>
                          </div>
                     </div>
                 `;
@@ -697,21 +768,6 @@
 
         function toggleVenueMode() {
             isVenueMode = !isVenueMode;
-            const btn = document.getElementById('venue-toggle');
-            const venueFilters = document.getElementById('venue-filters');
-            btn.className = isVenueMode ? 
-                "w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0" : 
-                "w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0";
-            if(venueFilters) venueFilters.classList.toggle('hidden', !isVenueMode);
-            if (!isVenueMode) {
-                currentFilterStatus = 'all';
-                document.querySelectorAll('.venue-active-btn').forEach(b => b.classList.remove('active'));
-            } else {
-                currentFilterStatus = 'venue_remaining';
-                document.getElementById('btn-venue-rem').classList.add('active');
-                document.getElementById('btn-venue-pick').classList.remove('active');
-            }
-            filterData();
         }
 
         function setVenueFilter(v) { 
@@ -725,14 +781,14 @@
         function setEditStatus(status) {
             const statusInput = document.getElementById('edit-status-val');
             if (statusInput) statusInput.value = status;
-            ['wait','confirm','return','cancel'].forEach(k => {
+            ['wait','confirm','return','cancel','hold'].forEach(k => {
                 const btn = document.getElementById(`btn-status-${k}`);
                 if(btn) {
                     btn.className = "status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all";
                     btn.style = ""; 
                 }
             });
-            const map = { '예약신청':'wait', '확정':'confirm', '반납완료':'return', '취소':'cancel' };
+            const map = { '예약신청':'wait', '확정':'confirm', '반납완료':'return', '취소':'cancel', '대기':'hold' };
             const activeKey = map[status];
             const activeBtn = document.getElementById(`btn-status-${activeKey}`);
             if(activeBtn) {
@@ -740,15 +796,14 @@
                 else if(status === '확정') { activeBtn.style.backgroundColor = '#0064FF'; activeBtn.style.color = 'white'; activeBtn.style.borderColor = '#0064FF'; }
                 else if(status === '반납완료') { activeBtn.style.backgroundColor = '#4B5563'; activeBtn.style.color = 'white'; activeBtn.style.borderColor = '#4B5563'; }
                 else if(status === '취소') { activeBtn.style.backgroundColor = '#DC2626'; activeBtn.style.color = 'white'; activeBtn.style.borderColor = '#DC2626'; }
+                else if(status === '대기') { activeBtn.style.backgroundColor = '#F5F3FF'; activeBtn.style.color = '#7C3AED'; activeBtn.style.borderColor = '#DDD6FE'; }
             }
         }
 
-        // [수정] 수령/반납 방법 선택 함수 (다중 클래스 선택자 지원 및 초기화 로직)
         function selectMethod(type, value) {
             document.getElementById(`edit-${type === 'delivery' ? 'delivery' : 'return-way'}`).value = value;
             const containerId = type === 'delivery' ? 'delivery-method-list' : 'return-method-list';
             document.querySelectorAll(`#${containerId} .method-chip`).forEach(btn => {
-                // 정확한 값 일치 여부로 활성화 상태 토글
                 btn.classList.toggle('active', btn.dataset.val === value);
             });
         }
@@ -757,7 +812,7 @@
             const root = document.getElementById('modal-root');
             if(!root) return;
             document.getElementById('edit-row').value = item.row;
-            document.getElementById('display-order-time').innerText = "접수: " + (formatTime(item.orderTime).replace('<br>', ' ') || '-');
+            document.getElementById('display-order-time').innerHTML = "접수: " + (formatTime(item.orderTime).replace('<br>', ' ') || '-');
             document.getElementById('edit-name').value = item.name || '';
             document.getElementById('edit-phone').value = item.phone || '';
             document.getElementById('edit-start').value = item.startDate || '';
@@ -769,7 +824,6 @@
             const priceField = document.getElementById('edit-price');
             if(priceField) priceField.value = (item.totalPrice || 0);
 
-            // [수정] 데이터에 포함된 텍스트 기준으로 칩 선택 (includes 활용하여 자동 선택)
             const deliveryVal = item.delivery || '';
             let selectedDelivery = '';
             if(deliveryVal.includes('택배')) selectedDelivery = '택배';
@@ -777,7 +831,7 @@
             else if(deliveryVal.includes('사무실')) selectedDelivery = '사무실';
             else if(deliveryVal.includes('퀵')) selectedDelivery = '퀵';
             selectMethod('delivery', selectedDelivery);
-            document.getElementById('edit-delivery').value = deliveryVal; // 원본 값 유지
+            document.getElementById('edit-delivery').value = deliveryVal; 
 
             const returnVal = item.returnWay || '';
             let selectedReturn = '';
@@ -785,7 +839,7 @@
             else if(returnVal.includes('공연장') || returnVal.includes('현장')) selectedReturn = '공연장';
             else if(returnVal.includes('당일')) selectedReturn = '당일반납';
             selectMethod('return', selectedReturn);
-            document.getElementById('edit-return-way').value = returnVal; // 원본 값 유지
+            document.getElementById('edit-return-way').value = returnVal; 
 
             let rawModel = item.model || '';
             const hasBattery = rawModel.includes('보조배터리');
@@ -896,31 +950,6 @@
         function setDeliveryFilter(d) { currentDeliveryFilter = d; document.querySelectorAll('.delivery-filter-item').forEach(b => b.classList.toggle('active', b.dataset.id === d)); filterData(); }
         function setReturnFilter(r) { currentReturnFilter = r; document.querySelectorAll('.return-filter-item').forEach(b => b.classList.toggle('active', b.dataset.id === r)); filterData(); }
 
-        function toggleVenueMode() {
-            isVenueMode = !isVenueMode;
-            const btn = document.getElementById('venue-toggle');
-            const venueFilters = document.getElementById('venue-filters');
-            btn.className = isVenueMode ? "w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-blue-500 bg-blue-50 text-blue-600 shadow-sm shrink-0" : "w-[50px] flex items-center justify-center h-[38px] px-1 rounded-xl text-[9px] font-black border border-slate-200 bg-white text-slate-500 shadow-sm shrink-0";
-            if(venueFilters) venueFilters.classList.toggle('hidden', !isVenueMode);
-            if (!isVenueMode) {
-                currentFilterStatus = 'all';
-                document.querySelectorAll('.venue-active-btn').forEach(b => b.classList.remove('active'));
-            } else {
-                currentFilterStatus = 'venue_remaining';
-                document.getElementById('btn-venue-rem').classList.add('active');
-                document.getElementById('btn-venue-pick').classList.remove('active');
-            }
-            filterData();
-        }
-
-        function setVenueFilter(v) { 
-            currentFilterStatus = v; 
-            document.querySelectorAll('.venue-active-btn').forEach(b => {
-                b.classList.toggle('active', b.getAttribute('data-val') === v);
-            });
-            filterData(); 
-        }
-
         function openCalendar() {
             renderCalendar();
             const root = document.getElementById('calendar-modal-root');
@@ -955,7 +984,3 @@
     </script>
 </body>
 </html>
-
-
-
-

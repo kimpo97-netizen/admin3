@@ -127,7 +127,7 @@
         .chip-btn.active { background: #1E293B !important; color: white !important; border-color: #1E293B !important; }
         .venue-active-btn.active { background: #1E293B !important; color: white !important; border-color: #1E293B !important; }
         
-        /* [추가] 하위 필터 스타일 */
+        /* 하위 필터 스타일 */
         .delivery-sub-filter-item { border-style: dashed; }
         .delivery-sub-filter-item.active { border-style: solid; }
 
@@ -178,7 +178,7 @@
     <header class="sticky top-0 z-30 header-fixed pt-safe bg-white/95">
         <div class="px-4 pt-3 pb-1">
             
-            <!-- [위치 이동] 1. 카테고리 탭 -->
+            <!-- 1. 카테고리 탭 -->
             <div class="flex border-b border-slate-100 relative pr-10 mb-2">
                 <button onclick="switchTab('model')" id="tab-model" class="tab-btn active">📱 모델</button>
                 <button onclick="switchTab('delivery')" id="tab-delivery" class="tab-btn">📦 수령</button>
@@ -188,7 +188,7 @@
                 </button>
             </div>
 
-            <!-- [위치 이동] 2. 카테고리 상세 필터 -->
+            <!-- 2. 카테고리 상세 필터 -->
             <div id="category-section" class="pb-3">
                 <div id="filter-group-model" class="flex gap-1.5 overflow-x-auto hide-scrollbar">
                     <button onclick="setModelFilter('all')" class="chip-btn model-filter-item active" data-id="all">전체</button>
@@ -206,7 +206,7 @@
                         <button onclick="setDeliveryFilter('공연장')" class="chip-btn delivery-filter-item" data-id="공연장">공연장</button>
                         <button onclick="setDeliveryFilter('사무실')" class="chip-btn delivery-filter-item" data-id="사무실">사무실</button>
                     </div>
-                    <!-- [추가] 수령 방법 하위 필터 (남은인원/수령인원) -->
+                    <!-- 수령 방법 하위 필터 (남은인원/수령인원) -->
                     <div id="sub-filter-group-delivery" class="hidden gap-1.5 mt-2 overflow-x-auto hide-scrollbar">
                         <button onclick="setDeliverySubFilter('all')" class="chip-btn delivery-sub-filter-item active" data-id="all">전체</button>
                         <button onclick="setDeliverySubFilter('remaining')" class="chip-btn delivery-sub-filter-item" data-id="remaining">남은인원</button>
@@ -221,7 +221,7 @@
                 </div>
             </div>
 
-            <!-- [위치 이동] 3. 검색바 & 백업 & 연장 버튼 -->
+            <!-- 3. 검색바 & 백업 & 연장 버튼 -->
             <div class="flex items-center gap-1.5 mb-2">
                 <div class="flex-1 relative header-input-box px-3 shadow-sm focus-within:ring-1 focus-within:ring-blue-400">
                     <svg class="text-slate-400 mr-2 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -244,13 +244,11 @@
                 </button>
             </div>
 
-            <!-- [위치 이동] 4. 날짜 바 -->
+            <!-- 4. 날짜 바 -->
             <div id="active-date-bar" class="hidden mb-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl flex justify-between items-center">
                 <span id="active-date-text" class="text-blue-600 text-xs font-bold font-tnum"></span>
                 <button onclick="clearDate(event)" class="text-blue-400 hover:text-blue-600 font-bold text-[10px] px-2 py-1 bg-white rounded-lg border border-blue-100">해제</button>
             </div>
-
-            <!-- [삭제됨] 5. 퀵 필터 영역 삭제 -->
         </div>
         <input type="date" id="filter-date" class="hidden">
     </header>
@@ -277,6 +275,7 @@
             <div class="scroll-area bg-[#F9FAFB]">
                 <form id="edit-form" onsubmit="submitUpdate(event)">
                     <input type="hidden" id="edit-row">
+                    <input type="hidden" id="edit-sheet-name"> <!-- 시트명 전송용 숨김 필드 -->
                     
                     <div class="form-section shadow-sm">
                         <div class="flex justify-between items-center mb-3">
@@ -295,11 +294,13 @@
                     <div class="form-section">
                         <div class="form-title">진행 상태</div>
                         <input type="hidden" id="edit-status-val">
-                        <div class="grid grid-cols-4 gap-1.5">
+                        <!-- 취소 버튼 추가를 위해 grid-cols-5로 설정 -->
+                        <div class="grid grid-cols-5 gap-1">
                             <button type="button" onclick="setEditStatus('예약신청')" id="btn-status-wait" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">신청</button>
                             <button type="button" onclick="setEditStatus('대기')" id="btn-status-hold" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">대기</button>
                             <button type="button" onclick="setEditStatus('확정')" id="btn-status-confirm" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">확정</button>
                             <button type="button" onclick="setEditStatus('반납완료')" id="btn-status-return" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">반납</button>
+                            <button type="button" onclick="setEditStatus('취소')" id="btn-status-cancel" class="status-btn py-3.5 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-400 transition-all">취소</button>
                         </div>
                     </div>
 
@@ -365,7 +366,6 @@
                                     <button type="button" onclick="selectMethod('return', '택배')" class="method-chip" data-val="택배">택배</button>
                                     <button type="button" onclick="selectMethod('return', '공연장')" class="method-chip" data-val="공연장">공연장</button>
                                     <button type="button" onclick="selectMethod('return', '당일반납')" class="method-chip" data-val="당일반납">당일반납</button>
-                                    <!-- [추가] 사무실 반납 버튼 -->
                                     <button type="button" onclick="selectMethod('return', '사무실')" class="method-chip" data-val="사무실">사무실</button>
                                 </div>
                                 <input type="hidden" id="edit-return-way">
@@ -423,7 +423,8 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbxNXmQCPCI6GR7dDXjnC3b4TnuexT0J9U1EuCPoZW1mvbGt-xZegiBIjtIOXbAytc81ug/exec"; 
+        // 최신 API URL 적용
+        const API_URL = "https://script.google.com/macros/s/AKfycbxupnqA2Nb-dGYqe6suICAdj59beQscFUedvAx8ouR2GsQ182fhAhPupwR8GwS7BHi1Ow/exec"; 
         const MODEL_LIST = ['23U', '24U', '25U', '26U', '17P', '17PM'];
         const STATUS_PRIORITY = { '예약신청': 1, '대기': 2, '확정': 3, '반납완료': 4, '취소': 5 };
 
@@ -431,11 +432,10 @@
         let currentFilterStatus = 'all';
         let currentModelFilter = 'all';
         let currentDeliveryFilter = 'all';
-        let currentDeliverySubFilter = 'all'; // [추가] 수령 방법 하위 필터 (남은인원/수령인원)
+        let currentDeliverySubFilter = 'all';
         let currentReturnFilter = 'all';
         let isVenueMode = false;
         
-        // [변경] 기간 선택을 위한 변수 (start, end)
         let dateRange = { start: null, end: null };
         let calCurrentDate = new Date(); 
 
@@ -478,7 +478,7 @@
             const counts = { 
                 model: { 'all': 0, '23U': 0, '24U': 0, '25U': 0, '26U': 0, '17P': 0, '17PM': 0, '백업': 0, '연장': 0 },
                 delivery: { 'all': 0, '택배': 0, '공연장': 0, '사무실': 0 },
-                deliverySub: { 'all': 0, 'remaining': 0, 'pickedup': 0 }, // [추가] 하위 필터 카운트
+                deliverySub: { 'all': 0, 'remaining': 0, 'pickedup': 0 },
                 return: { 'all': 0, '택배': 0, '당일': 0, '사무실': 0 },
                 venue: { rem: 0, pick: 0 }
             };
@@ -491,19 +491,16 @@
                 const status = (item.status || '');
                 const startDateStr = item.startDate;
                 
-                // [변경] 기기 번호 배정 여부 확인
                 const cleanModel = model.replace(/\s*\+?\s*보조배터리/g, '').trim();
                 const isAssigned = /\d$/.test(cleanModel);
 
                 const matchQuery = name.includes(query) || phone.includes(query) || model.includes(query);
                 
-                // [변경] 기간 필터링 로직 (대여 시작일 기준)
                 let matchDate = true;
                 if (dateRange.start) {
                     if (!startDateStr) {
                         matchDate = false;
                     } else {
-                        // 문자열 비교 (YYYY-MM-DD 형식이므로 사전순 비교 가능)
                         if (dateRange.end) {
                             matchDate = startDateStr >= dateRange.start && startDateStr <= dateRange.end;
                         } else {
@@ -523,13 +520,11 @@
                     if (delivery.includes('공연') || delivery.includes('현장')) counts.delivery['공연장']++;
                     if (delivery.includes('사무실')) counts.delivery['사무실']++;
 
-                    // [추가] 하위 필터 카운트 로직
-                    // 현재 선택된 상위 필터(currentDeliveryFilter)에 해당하는 경우에만 카운트
                     const matchCurrentDelivery = (currentDeliveryFilter === 'all') || delivery.includes(currentDeliveryFilter);
                     if (matchCurrentDelivery) {
                         counts.deliverySub.all++;
-                        if (!isAssigned) counts.deliverySub.remaining++; // 기기 미배정 -> 남은인원
-                        else counts.deliverySub.pickedup++; // 기기 배정 -> 수령인원
+                        if (!isAssigned) counts.deliverySub.remaining++; 
+                        else counts.deliverySub.pickedup++; 
                     }
 
                     counts.return.all++;
@@ -548,9 +543,8 @@
                 const matchDelivery = (currentDeliveryFilter === 'all') || delivery.includes(currentDeliveryFilter);
                 const matchReturn = (currentReturnFilter === 'all') || (item.returnWay || '').includes(currentReturnFilter);
 
-                // [추가] 하위 필터링 로직 적용
                 let matchDeliverySub = true;
-                if (currentDeliveryFilter !== 'all') { // 상위 필터가 선택되었을 때만 적용
+                if (currentDeliveryFilter !== 'all') { 
                      if (currentDeliverySubFilter === 'remaining' && isAssigned) matchDeliverySub = false;
                      if (currentDeliverySubFilter === 'pickedup' && !isAssigned) matchDeliverySub = false;
                 }
@@ -588,7 +582,6 @@
                         
                         btn.innerText = `${baseText}(${count})`;
                         
-                        // [추가] 0개인 필터 숨기기 (단, '전체'는 항상 표시)
                         if (id !== 'all' && count === 0) {
                             btn.classList.add('hidden');
                         } else {
@@ -599,13 +592,12 @@
             };
             updateTabCounts('filter-group-model', counts.model);
             updateTabCounts('filter-group-delivery', counts.delivery);
-            updateTabCounts('sub-filter-group-delivery', counts.deliverySub); // [추가] 하위 필터 업데이트
+            updateTabCounts('sub-filter-group-delivery', counts.deliverySub); 
             updateTabCounts('filter-group-return', counts.return);
             
             const backupBtn = document.getElementById('btn-quick-backup');
             if(backupBtn) {
                 const count = counts.model['백업'];
-                // [추가] 백업 건수가 0이면 버튼 숨김
                 if (count === 0) {
                     backupBtn.classList.add('hidden');
                 } else {
@@ -623,7 +615,6 @@
             const extensionBtn = document.getElementById('btn-quick-extension');
             if(extensionBtn) {
                 const count = counts.model['연장'];
-                // [추가] 연장 건수가 0이면 버튼 숨김
                 if (count === 0) {
                     extensionBtn.classList.add('hidden');
                 } else {
@@ -655,28 +646,17 @@
             }
         }
 
-        // [삭제] setSpecialFilter 함수 삭제
-
         function filterStatus(status) {
-            // [삭제] specialFilter 초기화 로직 삭제
             currentFilterStatus = status;
-            // [삭제] 금주 버튼 active 해제 로직 삭제
-            document.querySelectorAll('.chip-btn').forEach(btn => {
-                const btnText = btn.innerText;
-                const pureText = btnText.split('(')[0].trim();
-                if (status === 'all') btn.classList.toggle('active', pureText === '전체');
-                else btn.classList.toggle('active', pureText === status.replace('예약신청', '신청'));
-            });
             filterData();
         }
 
         function setDeliveryFilter(d) { 
             currentDeliveryFilter = d; 
-            currentDeliverySubFilter = 'all'; // [추가] 상위 필터 변경 시 하위 필터 초기화
+            currentDeliverySubFilter = 'all'; 
             
             document.querySelectorAll('.delivery-filter-item').forEach(b => b.classList.toggle('active', b.dataset.id === d)); 
             
-            // [추가] 하위 필터 영역 표시/숨김
             const subGroup = document.getElementById('sub-filter-group-delivery');
             if (d === 'all') {
                 subGroup.classList.add('hidden');
@@ -686,7 +666,6 @@
                 subGroup.classList.add('flex');
             }
             
-            // [추가] 하위 필터 버튼 초기화
             document.querySelectorAll('.delivery-sub-filter-item').forEach(b => b.classList.toggle('active', b.dataset.id === 'all'));
 
             filterData(); 
@@ -727,17 +706,16 @@
                 const truck = item.trackingNumber ? '🚚' : '';
                 const memo = item.memo ? '📝' : '';
 
-                // [수정] 결제 수단 스타일 및 간략화 로직
                 const rawPay = item.paymentMethod || ''; 
                 let payShort = rawPay;
-                let payBadgeClass = 'bg-slate-100 text-slate-600'; // 기본: 회색
+                let payBadgeClass = 'bg-slate-100 text-slate-600'; 
 
                 if(rawPay.includes('계좌이체')) {
                     payShort = '이체';
-                    payBadgeClass = 'bg-blue-100 text-blue-600 border border-blue-200'; // 이체: 파란색
+                    payBadgeClass = 'bg-blue-100 text-blue-600 border border-blue-200'; 
                 } else if(rawPay.includes('네이버스토어결제') || rawPay.includes('카드')) {
                     payShort = '카드';
-                    payBadgeClass = 'bg-emerald-100 text-emerald-600 border border-emerald-200'; // 카드: 녹색
+                    payBadgeClass = 'bg-emerald-100 text-emerald-600 border border-emerald-200'; 
                 } else if(rawPay === '') {
                     payShort = '-';
                 }
@@ -853,6 +831,7 @@
             const root = document.getElementById('modal-root');
             if(!root) return;
             document.getElementById('edit-row').value = item.row;
+            document.getElementById('edit-sheet-name').value = item.sheetName || '예약내역'; // 시트명 가져오기
             document.getElementById('display-order-time').innerHTML = "접수: " + (formatTime(item.orderTime).replace('<br>', ' ') || '-');
             document.getElementById('edit-name').value = item.name || '';
             document.getElementById('edit-phone').value = item.phone || '';
@@ -879,7 +858,7 @@
             if(returnVal.includes('택배')) selectedReturn = '택배';
             else if(returnVal.includes('공연장') || returnVal.includes('현장')) selectedReturn = '공연장';
             else if(returnVal.includes('당일')) selectedReturn = '당일반납';
-            else if(returnVal.includes('사무실')) selectedReturn = '사무실'; // [추가] 사무실 선택 로직
+            else if(returnVal.includes('사무실')) selectedReturn = '사무실'; 
             selectMethod('return', selectedReturn);
             document.getElementById('edit-return-way').value = returnVal; 
 
@@ -943,22 +922,35 @@
             const modelType = document.getElementById('edit-model-type').value;
             const deviceId = document.getElementById('edit-device-id').value.trim();
             let finalModel = (modelType === '기타' ? deviceId : modelType + deviceId) + (document.getElementById('edit-battery').checked ? "+보조배터리" : "");
+            
             const payload = {
-                type: 'update', row: document.getElementById('edit-row').value, name: document.getElementById('edit-name').value, phone: document.getElementById('edit-phone').value,
-                startDate: document.getElementById('edit-start').value, endDate: document.getElementById('edit-end').value, delivery: document.getElementById('edit-delivery').value, 
-                returnWay: document.getElementById('edit-return-way').value, status: document.getElementById('edit-status-val').value, tracking: document.getElementById('edit-tracking').value,
-                model: finalModel, memo: document.getElementById('edit-memo').value, totalPrice: document.getElementById('edit-price').value
+                type: 'update', 
+                row: document.getElementById('edit-row').value, 
+                sheetName: document.getElementById('edit-sheet-name').value, // 추가된 시트명
+                name: document.getElementById('edit-name').value, 
+                phone: document.getElementById('edit-phone').value,
+                startDate: document.getElementById('edit-start').value, 
+                endDate: document.getElementById('edit-end').value, 
+                delivery: document.getElementById('edit-delivery').value, 
+                returnWay: document.getElementById('edit-return-way').value, 
+                status: document.getElementById('edit-status-val').value, 
+                tracking: document.getElementById('edit-tracking').value,
+                model: finalModel, 
+                memo: document.getElementById('edit-memo').value, 
+                totalPrice: document.getElementById('edit-price').value
             };
             try { await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); showAppAlert("정보를 수정했습니다.", "완료", "✅"); closeModal(); setTimeout(fetchData, 500); } 
             catch(err) { showToast("저장에 실패했습니다."); } finally { btn.innerText = '수정 완료하기'; btn.disabled = false; }
         }
 
         function confirmDelete() {
-            showAppConfirm("이 예약을 정말 삭제할까요?", () => {
+            showAppConfirm("이 예약을 '삭제' 시트로 이동시킬까요?", () => {
                 const rowId = document.getElementById('edit-row').value;
-                fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'delete', row: rowId }) })
-                .then(() => { showAppAlert("삭제되었습니다.", "완료", "🗑️"); closeModal(); fetchData(); });
-            }, "삭제 확인", "삭제하기", "bg-[#DC2626]", "🗑️");
+                const sheetName = document.getElementById('edit-sheet-name').value; // 추가된 시트명
+                
+                fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'delete', row: rowId, sheetName: sheetName }) })
+                .then(() => { showAppAlert("삭제 시트로 이동되었습니다.", "완료", "🗑️"); closeModal(); fetchData(); });
+            }, "삭제 이동", "이동하기", "bg-[#DC2626]", "🗑️");
         }
 
         function copyToClipboard(text, e) {
@@ -1000,7 +992,6 @@
         function closeCalendar() { const root = document.getElementById('calendar-modal-root'); if(root) root.classList.remove('active'); setTimeout(() => { if(root) root.style.display = 'none'; document.body.classList.remove('modal-open'); }, 300); }
         function moveMonth(step) { calCurrentDate.setMonth(calCurrentDate.getMonth() + step); renderCalendar(); }
         
-        // [변경] 캘린더 렌더링 및 기간 선택 로직
         function renderCalendar() {
             const y = calCurrentDate.getFullYear(), m = calCurrentDate.getMonth();
             const titleEl = document.getElementById('cal-month-title');
@@ -1015,7 +1006,6 @@
                 const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const div = document.createElement('div'); 
                 
-                // 기간 선택 스타일 적용
                 let className = 'cal-day-cell hover:bg-slate-50';
                 if (dateRange.start && dateRange.end) {
                     if (ds === dateRange.start) className += ' range-start';
@@ -1033,22 +1023,20 @@
         }
 
         function selectDate(date) {
-            // 1. 새로운 시작 (기존에 start, end 둘 다 있거나, 아무것도 없을 때)
             if ((dateRange.start && dateRange.end) || (!dateRange.start)) {
                 dateRange.start = date;
                 dateRange.end = null;
             } 
-            // 2. 기간 완성 (start만 있을 때)
             else if (dateRange.start && !dateRange.end) {
                 if (date < dateRange.start) {
-                    dateRange.start = date; // 더 이전 날짜를 찍으면 시작일 변경
+                    dateRange.start = date; 
                 } else {
                     dateRange.end = date;
-                    closeCalendar(); // 기간 완성 시 닫기
+                    closeCalendar(); 
                 }
             }
             
-            renderCalendar(); // 스타일 업데이트
+            renderCalendar(); 
             updateActiveDateUI();
             filterData();
         }
@@ -1094,5 +1082,3 @@
     </script>
 </body>
 </html>
-
-
